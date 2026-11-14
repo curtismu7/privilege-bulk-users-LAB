@@ -1,0 +1,12 @@
+node_modules
+**/node_modules
+.git
+.github
+.data
+**/.data
+web/dist
+# Settings and secrets never enter the image or the build context, at any depth: compose passes the .env in at run time.
+.env
+**/.env
+.env.*
+**/.env.*

@@ -1,0 +1,87 @@
+[
+  {
+    "id": "privilege-group",
+    "term": "Privilege group",
+    "definition": "Privilege only knows the users of its own PingOne environment who are members of one group. Being in the environment is not enough: the group is what registers a person. The group's name is the BULK_P1_GROUP setting."
+  },
+  {
+    "id": "route-a",
+    "term": "Route A: PingOne API",
+    "definition": "Register people through the PingOne Management API: create the person in Privilege's environment (same email, username and name, the default population, no password) and add them to the Privilege group. This is the route the owner's own script runs; the lab mocks it and Real runs it."
+  },
+  {
+    "id": "route-b",
+    "term": "Route B: Privilege console API",
+    "definition": "Create user records with POST /api/{tenant}/v1/users on the Privilege console, signed with an API key and secret. UNVERIFIED against a real console: it is documented in the console's swagger and tested here only against the Mock."
+  },
+  {
+    "id": "worker-app",
+    "term": "Worker app",
+    "definition": "A PingOne application that signs in with the client credentials grant (HTTP Basic with its client id and secret) and acts on environments through the Management API. Route A uses one; its secret is write-only in this lab."
+  },
+  {
+    "id": "identity-data-admin",
+    "term": "Identity Data Admin",
+    "definition": "The PingOne role the worker app needs on Privilege's environment to read and create users there. Without it PingOne answers with empty user lists, not a 403."
+  },
+  {
+    "id": "empty-list-trap",
+    "term": "The empty list that is not a 403",
+    "definition": "A worker without Identity Data Admin gets 200 and an empty list when it reads Privilege's users, which looks the same as an empty environment. The lab treats an empty destination as a blocking warning (destination_empty) that you must acknowledge: applying anyway would try to create people who already exist."
+  },
+  {
+    "id": "snapshot-diff",
+    "term": "Snapshot and diff",
+    "definition": "Read the source and the destination once, keep both in memory, and decide every person by matching email and username there, instead of one lookup per person. Only people who already exist cost one extra call (their group membership). It keeps the call count near the number of pages plus the people to change."
+  },
+  {
+    "id": "plan-apply-verify",
+    "term": "Plan, apply, verify",
+    "definition": "Plan reads and decides and writes nothing. Apply writes what a fresh plan said. Verify is a second plan: if the run worked, it finds nothing left to apply. One job runs at a time."
+  },
+  {
+    "id": "two-step-gate",
+    "term": "The two-step gate",
+    "definition": "Apply needs a fresh plan (under 15 minutes old, not used before, same mode) and the exact count typed back as REGISTER <n>. Blocking warnings must be acknowledged. In Real, the Writes switch must also be on. Every refusal names its reason and writes nothing."
+  },
+  {
+    "id": "rate-limit-backoff",
+    "term": "429 and back-off",
+    "definition": "When the service answers 429 Too Many Requests, wait for the Retry-After it sends (seconds or an HTTP date, capped) and go again. The wait is shared: one 429 pauses every worker, not only the one that was told off. The Run page counts the 429s and the time waited. How many calls PingOne allows is UNVERIFIED: the lab learns it from the 429s."
+  },
+  {
+    "id": "idempotent-verify",
+    "term": "Idempotent re-run",
+    "definition": "People who are already right are left alone, so running the job twice changes nothing the second time. That is why verify works: plan again after apply and the count to apply falls to 0, apart from conflicts and invalid rows a person must look at."
+  },
+  {
+    "id": "conflict",
+    "term": "Conflict",
+    "definition": "A source person whose username already belongs to someone else in Privilege's environment. PingOne usernames are case-insensitive, so it can be a different person. The lab never adds or changes them: it reports the row and a person decides."
+  },
+  {
+    "id": "circuit-breaker",
+    "term": "Circuit breaker",
+    "definition": "A failure for one person is a failed row, never a stopped run. But when most of the first people in an apply fail, the run stops on purpose (circuit_open): that is usually one cause, such as a missing role or a wrong group, not that many bad people."
+  },
+  {
+    "id": "mock-world",
+    "term": "Mock world",
+    "definition": "An in-process, deterministic stand-in for PingOne and the Privilege console with made-up people on .example addresses, reached through an injected fetch so no socket opens. It plays six scenarios (realistic, clean, rate-limited, flaky, conflicts, missing role). An illustrative sample, not a recording."
+  },
+  {
+    "id": "netguard",
+    "term": "Netguard",
+    "definition": "The runtime guard that refuses every non-loopback socket, DNS lookup, fetch and UDP send. A Real job holds a permit for the PingOne token and API hosts of its region, and for route B the one console origin, only while the job runs."
+  },
+  {
+    "id": "audit-log",
+    "term": "Audit log",
+    "definition": "One summary line per plan, apply, abort or writes switch: the route, the mode, the outcome and the counts. Never a person's address and never a credential."
+  },
+  {
+    "id": "simulation-honesty",
+    "term": "Simulation honesty",
+    "definition": "A banner on every page, presenter mode included, says whether you are in Mock or Real and what is simulated. Product claims without a source are labelled UNVERIFIED on the Guide page."
+  }
+]

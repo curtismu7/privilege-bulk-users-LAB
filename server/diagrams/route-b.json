@@ -1,0 +1,150 @@
+{
+  "schema": "diagram-studio/1",
+  "id": "route-b",
+  "title": "Route B: create user records with the Privilege console API",
+  "lede": "The literal register-a-user call: POST /api/{tenant}/v1/users, one record per person, with the console's key and secret. Write-gated and UNVERIFIED against a real console. Simulated in Mock.",
+  "groups": {
+    "client": {
+      "label": "Your side",
+      "color": "dark"
+    },
+    "app": {
+      "label": "This lab",
+      "color": "red"
+    },
+    "console": {
+      "label": "Privilege console API",
+      "color": "green"
+    }
+  },
+  "nodes": [
+    {
+      "id": "operator",
+      "label": "You (this page)",
+      "group": "client",
+      "sub": [
+        "Plan, review, Apply, Verify."
+      ],
+      "x": 0,
+      "y": 150
+    },
+    {
+      "id": "app",
+      "label": "This lab (server)",
+      "group": "app",
+      "sub": [
+        "Holds the console secret (write-only). Same bounded pool and back-off as Route A."
+      ],
+      "x": 440,
+      "y": 150
+    },
+    {
+      "id": "console",
+      "label": "Privilege console API",
+      "group": "console",
+      "sub": [
+        "x-api-key, x-api-secret, x-procyon-session-id.",
+        "GET and POST /api/{tenant}/v1/users."
+      ],
+      "x": 920,
+      "y": 150
+    }
+  ],
+  "edges": [
+    {
+      "source": "operator",
+      "target": "app",
+      "label": "POST /api/plan, /api/apply",
+      "handles": [
+        "r1",
+        "l1"
+      ]
+    },
+    {
+      "source": "app",
+      "target": "console",
+      "label": "GET /v1/users (list)",
+      "handles": [
+        "r1",
+        "l1"
+      ]
+    },
+    {
+      "source": "app",
+      "target": "console",
+      "label": "POST /v1/users (one each)",
+      "handles": [
+        "r2",
+        "l2"
+      ]
+    },
+    {
+      "source": "console",
+      "target": "app",
+      "label": "201 / 409 / 401 / 403",
+      "handles": [
+        "b1",
+        "b2"
+      ],
+      "dashed": true
+    },
+    {
+      "source": "app",
+      "target": "operator",
+      "label": "results, report",
+      "handles": [
+        "l2",
+        "r2"
+      ],
+      "dashed": true
+    }
+  ],
+  "steps": [
+    {
+      "title": "You press Plan",
+      "what": "Reads the people and the console's existing users. Writes nothing.",
+      "edges": [
+        0
+      ]
+    },
+    {
+      "title": "List what the console already has",
+      "what": "One GET of the users collection. The swagger shows no paging parameters on it; whether the console pages is UNVERIFIED.",
+      "edges": [
+        1
+      ]
+    },
+    {
+      "title": "Decide per person",
+      "what": "create, exists (already in the console), conflict or invalid. Re-running never creates a second record.",
+      "edges": [
+        1,
+        3
+      ]
+    },
+    {
+      "title": "You press Apply and type the count",
+      "what": "Same gate as Route A: the plan, the exact count, and in Real the writes switch.",
+      "edges": [
+        0
+      ]
+    },
+    {
+      "title": "POST one record per new person",
+      "what": "A bounded pool of POST /v1/users calls. 429 backs off, 409 is read as already there, one failure never stops the run.",
+      "why": "UNVERIFIED: which ObjectMeta fields the real console requires on a user, and whether a user created this way can sign in. Route A is the path our own environment uses.",
+      "edges": [
+        2,
+        3
+      ]
+    },
+    {
+      "title": "Verify: plan again",
+      "what": "A second plan should find nothing left to create.",
+      "edges": [
+        0,
+        4
+      ]
+    }
+  ]
+}

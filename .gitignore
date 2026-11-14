@@ -1,0 +1,10 @@
+node_modules/
+dist/
+coverage/
+# This lab's own settings (secrets): never committed, at any depth, under any suffix. Only the template is tracked.
+.env
+.env.*
+!.env.example
+*.log
+.DS_Store
+.data/

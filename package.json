@@ -1,0 +1,33 @@
+{
+  "name": "privilege-bulk-users-lab",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Privilege Bulk Users LAB: a guide and a runnable lab for registering users for PingOne Privilege by API, in bulk. Route A: PingOne Management API (read, create, add to the Privilege group). Route B: Privilege console API POST /v1/users. Mock by default; Real is owner-run.",
+  "license": "MIT",
+  "workspaces": [
+    "server",
+    "web"
+  ],
+  "engines": {
+    "node": ">=26"
+  },
+  "scripts": {
+    "start": "npm start -w server",
+    "dev": "npm run dev -w server & npm run dev -w web",
+    "test": "npm test -w server && npm test -w web && node --test scripts/*.test.mjs",
+    "build": "npm run build -w web",
+    "doctor": "node scripts/doctor.mjs",
+    "reset": "node scripts/reset.mjs",
+    "smoke": "node scripts/smoke.mjs",
+    "e2e": "node scripts/e2e.mjs",
+    "talk-track": "node scripts/build-talk-track.mjs",
+    "content-pack": "node scripts/build-content-pack.mjs && node scripts/validate-content-pack.mjs",
+    "verify-running": "node scripts/verify-running.mjs"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "^4.14.0",
+    "ajv": "^8.20.0",
+    "playwright": "^1.64.1"
+  }
+}

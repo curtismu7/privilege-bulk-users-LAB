@@ -1,0 +1,272 @@
+{
+  "schema": "demo-content-pack/1",
+  "id": "privilege-bulk-users",
+  "title": "Privilege Bulk Users LAB",
+  "version": "0.1.0",
+  "demo": {
+    "id": "privilege-bulk-users",
+    "name": "Privilege Bulk Users LAB",
+    "catalog": "D000",
+    "baseUrl": "http://localhost:7817",
+    "doctor": "/api/health",
+    "tags": [
+      "privilege",
+      "bulk-registration",
+      "pingone-api",
+      "rate-limiting",
+      "simulated"
+    ]
+  },
+  "glossary": [
+    {
+      "id": "audit-log",
+      "term": "Audit log",
+      "definition": "One summary line per plan, apply, abort or writes switch: the route, the mode, the outcome and the counts. Never a person's address and never a credential."
+    },
+    {
+      "id": "circuit-breaker",
+      "term": "Circuit breaker",
+      "definition": "A failure for one person is a failed row, never a stopped run. But when most of the first people in an apply fail, the run stops on purpose (circuit_open): that is usually one cause, such as a missing role or a wrong group, not that many bad people."
+    },
+    {
+      "id": "conflict",
+      "term": "Conflict",
+      "definition": "A source person whose username already belongs to someone else in Privilege's environment. PingOne usernames are case-insensitive, so it can be a different person. The lab never adds or changes them: it reports the row and a person decides."
+    },
+    {
+      "id": "empty-list-trap",
+      "term": "The empty list that is not a 403",
+      "definition": "A worker without Identity Data Admin gets 200 and an empty list when it reads Privilege's users, which looks the same as an empty environment. The lab treats an empty destination as a blocking warning (destination_empty) that you must acknowledge: applying anyway would try to create people who already exist."
+    },
+    {
+      "id": "idempotent-verify",
+      "term": "Idempotent re-run",
+      "definition": "People who are already right are left alone, so running the job twice changes nothing the second time. That is why verify works: plan again after apply and the count to apply falls to 0, apart from conflicts and invalid rows a person must look at."
+    },
+    {
+      "id": "identity-data-admin",
+      "term": "Identity Data Admin",
+      "definition": "The PingOne role the worker app needs on Privilege's environment to read and create users there. Without it PingOne answers with empty user lists, not a 403."
+    },
+    {
+      "id": "mock-world",
+      "term": "Mock world",
+      "definition": "An in-process, deterministic stand-in for PingOne and the Privilege console with made-up people on .example addresses, reached through an injected fetch so no socket opens. It plays six scenarios (realistic, clean, rate-limited, flaky, conflicts, missing role). An illustrative sample, not a recording."
+    },
+    {
+      "id": "netguard",
+      "term": "Netguard",
+      "definition": "The runtime guard that refuses every non-loopback socket, DNS lookup, fetch and UDP send. A Real job holds a permit for the PingOne token and API hosts of its region, and for route B the one console origin, only while the job runs."
+    },
+    {
+      "id": "plan-apply-verify",
+      "term": "Plan, apply, verify",
+      "definition": "Plan reads and decides and writes nothing. Apply writes what a fresh plan said. Verify is a second plan: if the run worked, it finds nothing left to apply. One job runs at a time."
+    },
+    {
+      "id": "privilege-group",
+      "term": "Privilege group",
+      "definition": "Privilege only knows the users of its own PingOne environment who are members of one group. Being in the environment is not enough: the group is what registers a person. The group's name is the BULK_P1_GROUP setting."
+    },
+    {
+      "id": "rate-limit-backoff",
+      "term": "429 and back-off",
+      "definition": "When the service answers 429 Too Many Requests, wait for the Retry-After it sends (seconds or an HTTP date, capped) and go again. The wait is shared: one 429 pauses every worker, not only the one that was told off. The Run page counts the 429s and the time waited. How many calls PingOne allows is UNVERIFIED: the lab learns it from the 429s."
+    },
+    {
+      "id": "route-a",
+      "term": "Route A: PingOne API",
+      "definition": "Register people through the PingOne Management API: create the person in Privilege's environment (same email, username and name, the default population, no password) and add them to the Privilege group. This is the route the owner's own script runs; the lab mocks it and Real runs it."
+    },
+    {
+      "id": "route-b",
+      "term": "Route B: Privilege console API",
+      "definition": "Create user records with POST /api/{tenant}/v1/users on the Privilege console, signed with an API key and secret. UNVERIFIED against a real console: it is documented in the console's swagger and tested here only against the Mock."
+    },
+    {
+      "id": "simulation-honesty",
+      "term": "Simulation honesty",
+      "definition": "A banner on every page, presenter mode included, says whether you are in Mock or Real and what is simulated. Product claims without a source are labelled UNVERIFIED on the Guide page."
+    },
+    {
+      "id": "snapshot-diff",
+      "term": "Snapshot and diff",
+      "definition": "Read the source and the destination once, keep both in memory, and decide every person by matching email and username there, instead of one lookup per person. Only people who already exist cost one extra call (their group membership). It keeps the call count near the number of pages plus the people to change."
+    },
+    {
+      "id": "two-step-gate",
+      "term": "The two-step gate",
+      "definition": "Apply needs a fresh plan (under 15 minutes old, not used before, same mode) and the exact count typed back as REGISTER <n>. Blocking warnings must be acknowledged. In Real, the Writes switch must also be on. Every refusal names its reason and writes nothing."
+    },
+    {
+      "id": "worker-app",
+      "term": "Worker app",
+      "definition": "A PingOne application that signs in with the client credentials grant (HTTP Basic with its client id and secret) and acts on environments through the Management API. Route A uses one; its secret is write-only in this lab."
+    }
+  ],
+  "sources": [],
+  "cards": [
+    {
+      "id": "apply",
+      "label": "Apply: the two-step gate",
+      "description": "Apply needs a fresh plan and the exact count typed back as REGISTER n. Blocking warnings need an acknowledgement; in Real the Writes switch must be on too. Every refusal names its reason.",
+      "group": "try-it",
+      "terms": [
+        "two-step-gate"
+      ],
+      "action": {
+        "type": "route",
+        "href": "/#/run"
+      }
+    },
+    {
+      "id": "audit",
+      "label": "Audit log",
+      "description": "One summary line per plan, apply, abort or writes switch. No address, no credential.",
+      "group": "reference",
+      "terms": [
+        "audit-log"
+      ],
+      "action": {
+        "type": "route",
+        "href": "/#/audit"
+      }
+    },
+    {
+      "id": "backoff",
+      "label": "429: slow down together",
+      "description": "Run the Realistic scenario and watch the 429 counter and the time waited: one 429 pauses every worker for the Retry-After, then the run carries on.",
+      "group": "try-it",
+      "terms": [
+        "rate-limit-backoff",
+        "circuit-breaker"
+      ],
+      "action": {
+        "type": "route",
+        "href": "/#/run"
+      }
+    },
+    {
+      "id": "diagram",
+      "label": "Diagram",
+      "description": "Route A and route B drawn as diagram-studio data: movable boxes, Simulate, Reset, speed.",
+      "group": "concept",
+      "action": {
+        "type": "route",
+        "href": "/#/diagram"
+      }
+    },
+    {
+      "id": "empty-list",
+      "label": "The empty list that is not a 403",
+      "description": "A worker app without the Identity Data Admin role reads an empty user list instead of an error. The plan turns that into a blocking warning you must acknowledge.",
+      "group": "concept",
+      "terms": [
+        "empty-list-trap",
+        "identity-data-admin",
+        "worker-app"
+      ],
+      "action": {
+        "type": "route",
+        "href": "/#/guide"
+      }
+    },
+    {
+      "id": "mock",
+      "label": "Mock: six scenarios, no tenant",
+      "description": "An in-process stand-in for PingOne and the Privilege console with made-up people. Realistic, clean, rate-limited, flaky, conflicts and missing role. Nothing leaves this machine.",
+      "group": "setup",
+      "terms": [
+        "mock-world",
+        "netguard",
+        "simulation-honesty"
+      ],
+      "action": {
+        "type": "route",
+        "href": "/#/help"
+      }
+    },
+    {
+      "id": "plan",
+      "label": "Plan: a dry run",
+      "description": "Read the source and the destination once, decide every person in memory, write nothing. The counts say who to create, who to add, who is in sync, and who needs a person to look.",
+      "group": "try-it",
+      "terms": [
+        "plan-apply-verify",
+        "snapshot-diff",
+        "conflict"
+      ],
+      "action": {
+        "type": "route",
+        "href": "/#/run"
+      }
+    },
+    {
+      "id": "real",
+      "label": "Real: your own .env",
+      "description": "Real is owner-run. Set the settings in this lab's own .env, press Real in the header, plan on a small source first, then apply with the Writes switch on.",
+      "group": "setup",
+      "terms": [
+        "worker-app"
+      ],
+      "action": {
+        "type": "route",
+        "href": "/#/help"
+      }
+    },
+    {
+      "id": "results",
+      "label": "Results and reports",
+      "description": "Every person has a row with a status, an HTTP status and the tries. Download the last job as JSON or CSV. Addresses are masked and the audit never holds one.",
+      "group": "reference",
+      "terms": [
+        "audit-log"
+      ],
+      "action": {
+        "type": "route",
+        "href": "/#/run"
+      }
+    },
+    {
+      "id": "routes",
+      "label": "Two routes to register people",
+      "description": "Route A calls the PingOne Management API (create in Privilege's environment, add to the Privilege group). Route B calls the Privilege console API, UNVERIFIED against a real console. The Guide shows both as curl commands with placeholders.",
+      "group": "concept",
+      "terms": [
+        "privilege-group",
+        "route-a",
+        "route-b"
+      ],
+      "action": {
+        "type": "route",
+        "href": "/#/guide"
+      }
+    },
+    {
+      "id": "verify",
+      "label": "Verify: plan again",
+      "description": "After an apply, plan again. A clean run finds 0 to apply, because people who are already right are left alone.",
+      "group": "try-it",
+      "terms": [
+        "idempotent-verify"
+      ],
+      "action": {
+        "type": "route",
+        "href": "/#/run"
+      }
+    }
+  ],
+  "diagrams": [
+    {
+      "id": "route-a",
+      "label": "Route A: register every user through the PingOne API",
+      "href": "/#/diagram"
+    },
+    {
+      "id": "route-b",
+      "label": "Route B: create user records with the Privilege console API",
+      "href": "/#/diagram"
+    }
+  ],
+  "stories": []
+}

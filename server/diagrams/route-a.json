@@ -1,0 +1,208 @@
+{
+  "schema": "diagram-studio/1",
+  "id": "route-a",
+  "title": "Route A: register every user through the PingOne API",
+  "lede": "Read the people from the source environment, make sure each one exists in Privilege's own PingOne environment, and put each one in the Privilege group. Plan first, apply second, plan again to prove nothing is left. Simulated in Mock.",
+  "groups": {
+    "client": {
+      "label": "Your side",
+      "color": "dark"
+    },
+    "app": {
+      "label": "This lab",
+      "color": "red"
+    },
+    "p1": {
+      "label": "PingOne Management API",
+      "color": "blue"
+    },
+    "priv": {
+      "label": "Privilege",
+      "color": "green"
+    }
+  },
+  "nodes": [
+    {
+      "id": "operator",
+      "label": "You (this page)",
+      "group": "client",
+      "sub": [
+        "Plan, review the counts, Apply, Verify."
+      ],
+      "x": 0,
+      "y": 150
+    },
+    {
+      "id": "app",
+      "label": "This lab (server)",
+      "group": "app",
+      "sub": [
+        "Holds the worker secret (write-only). Bounded pool, backs off on 429, never stops for one bad user."
+      ],
+      "x": 440,
+      "y": 150
+    },
+    {
+      "id": "src",
+      "label": "PingOne: source environment",
+      "group": "p1",
+      "sub": [
+        "Where the people already are.",
+        "GET /users, 100 per page, follow _links.next."
+      ],
+      "x": 920,
+      "y": 30
+    },
+    {
+      "id": "dst",
+      "label": "PingOne: Privilege's environment",
+      "group": "p1",
+      "sub": [
+        "Users, the Privilege group, the default population.",
+        "Needs the Identity Data Admin role."
+      ],
+      "x": 920,
+      "y": 280
+    },
+    {
+      "id": "priv",
+      "label": "Privilege",
+      "group": "priv",
+      "sub": [
+        "Knows the members of the group (Group Membership Policy)."
+      ],
+      "x": 1400,
+      "y": 280
+    }
+  ],
+  "edges": [
+    {
+      "source": "operator",
+      "target": "app",
+      "label": "POST /api/plan, /api/apply",
+      "handles": [
+        "r1",
+        "l1"
+      ]
+    },
+    {
+      "source": "app",
+      "target": "src",
+      "label": "GET /users (paged)",
+      "handles": [
+        "r1",
+        "l1"
+      ]
+    },
+    {
+      "source": "app",
+      "target": "dst",
+      "label": "GET /groups; POST /users, /memberOfGroups",
+      "handles": [
+        "r2",
+        "l1"
+      ]
+    },
+    {
+      "source": "dst",
+      "target": "app",
+      "label": "answers; 429 Retry-After; 404 after create",
+      "handles": [
+        "l2",
+        "r2"
+      ],
+      "dashed": true
+    },
+    {
+      "source": "dst",
+      "target": "priv",
+      "label": "group member = known to Privilege",
+      "handles": [
+        "r1",
+        "l1"
+      ],
+      "dashed": true
+    },
+    {
+      "source": "app",
+      "target": "operator",
+      "label": "results, report",
+      "handles": [
+        "l2",
+        "r2"
+      ],
+      "dashed": true
+    }
+  ],
+  "steps": [
+    {
+      "title": "You press Plan",
+      "what": "The plan reads and decides. It writes nothing. Press it as often as you like.",
+      "edges": [
+        0
+      ]
+    },
+    {
+      "title": "Read the source population",
+      "what": "One pass over the source environment, 100 users a page, following _links.next until there is none.",
+      "why": "PingOne caps a page at 100, so 5,000 people is 50 calls, not 5,000.",
+      "edges": [
+        1
+      ]
+    },
+    {
+      "title": "Snapshot the destination once",
+      "what": "Read Privilege's environment once (its users, the group, the default population) and match in memory by email and username.",
+      "why": "One list pass beats one lookup per person. It is the difference between minutes and hours at scale.",
+      "edges": [
+        2,
+        3
+      ]
+    },
+    {
+      "title": "Decide per person",
+      "what": "create+add, add, in-sync, conflict (the username belongs to someone else) or invalid (no email). Only people already in the destination cost a membership check.",
+      "edges": [
+        2,
+        3
+      ]
+    },
+    {
+      "title": "You press Apply and type the count",
+      "what": "Apply needs the plan, a typed confirmation with the exact number, and (in Real) the writes switch. A plan that has gone stale is refused.",
+      "edges": [
+        0
+      ]
+    },
+    {
+      "title": "Create and add with a bounded pool",
+      "what": "POST /users with no password, then POST /users/{id}/memberOfGroups. A few calls in flight at once, never one per person in sequence and never all at once.",
+      "why": "Use the user-centric memberOfGroups call. The group-centric /groups/{id}/members call was refused for our worker app with a misleading 403.",
+      "edges": [
+        2
+      ]
+    },
+    {
+      "title": "Back off, retry, carry on",
+      "what": "A 429 pauses every worker for the Retry-After. A 404 on the group add right after a create is retried. One failed person is recorded and the run continues.",
+      "edges": [
+        3
+      ]
+    },
+    {
+      "title": "Privilege sees them",
+      "what": "Privilege knows the members of the group in its own environment. UNVERIFIED here: how quickly a new member appears.",
+      "edges": [
+        4
+      ]
+    },
+    {
+      "title": "Verify: plan again",
+      "what": "A second plan should find nothing to do. That is the proof, and it is also why a crashed run can simply be run again.",
+      "edges": [
+        0,
+        5
+      ]
+    }
+  ]
+}

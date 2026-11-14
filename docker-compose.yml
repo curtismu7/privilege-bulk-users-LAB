@@ -1,0 +1,43 @@
+# OrbStack:  docker compose up --build -d   ->  http://127.0.0.1:7817/api/health   (HOST_PORT=<port> changes the host port)
+# The server binds 0.0.0.0 INSIDE the container (PBU_BIND is the opt-in), but the port is published on loopback only.
+# Do not change the 127.0.0.1 below: Real can create people in a PingOne environment (a test pins it).
+# PBU_CONTAINER=1 below is set here and NOT in the image: it is what lets Real accept the container's wide bind, and it is only safe together
+# with that 127.0.0.1 publish. A bare `docker run` of the image gets no marker, so Real is refused there (a test pins both files).
+# Mock is the default and needs nothing. Settings for Real come from this lab's own .env beside this file (copy .env.example; mode 600).
+# The .env is optional: with no file the lab starts in Mock. Real still needs PRIVILEGE_BULK_MODE=real in that file, the owner's opt-in.
+name: privilege-bulk-users-lab
+
+services:
+  privilege-bulk-users-lab:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${HOST_PORT:-7817}:7817"
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      SHELF_URL: ${SHELF_URL:-http://127.0.0.1:4400}
+      PORT: "7817"
+      PBU_BIND: 0.0.0.0
+      PBU_CONTAINER: "1"
+      LAB_ALLOWED_HOSTS: ${LAB_ALLOWED_HOSTS:-privilege-bulk-users.local.ping-devops.com}
+      PBU_DATA_DIR: /data
+    volumes:
+      - pbu-data:/data
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    healthcheck:
+      # Liveness plus "not broken": Mock needs no setup, so a healthy install is ready.
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:7817/api/health').then(r=>r.json()).then(j=>process.exit(j.schema==='demo-health/1'&&j.state!=='broken'?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+      start_interval: 2s
+
+volumes:
+  pbu-data:
