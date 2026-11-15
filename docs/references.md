@@ -8,6 +8,8 @@ Every product claim on the Guide page comes from this list. Anything without a s
 |---|---|
 | Privilege only knows the users of its own PingOne environment who are members of the Privilege group. A user who lives in another environment is created in Privilege's environment first (same email, username and name; default population; no password), then added to the group. | The owner's AI-DEMO2 `scripts/syncPrivilegeUsers.js` (header comment and body), in daily use; the SE1 Privilege setup guide (users belong to the `AgentPrivilege` group) |
 | The worker app needs the **Identity Data Admin** role on Privilege's environment. Without it PingOne returns **empty user lists, not a 403**. | `syncPrivilegeUsers.js` header |
+| Privilege can take the user and the groups from claims in a token instead of from PingOne, and it can use any claim (for example the claims in a PingFederate token). It is part of Privilege's OBO (on-behalf-of) setup. If the people already arrive in such a token, there may be nobody to register. | The owner, 2026-11-15. How it is set up is UNVERIFIED (see below). |
+| The role belongs to the PingOne worker app, not to the Privilege app (which has no role to set), and Privilege only reads people from PingOne: route A writes to PingOne, never to Privilege. | The owner, 2026-11-15; consistent with `syncPrivilegeUsers.js`, which only calls the PingOne API |
 | Add a user to a group with the user-centric `POST /v1/environments/{env}/users/{userId}/memberOfGroups` body `{ "id": "<groupId>" }`. The group-centric `/groups/{id}/members` call was refused for the worker app (403 with a misleading JWT-parse error). | AI-DEMO2 `scripts/addUserToGroup.js` header |
 | A user created a moment ago can answer 404 on the group add until PingOne catches up: retry. | `syncPrivilegeUsers.js` ("A user created a moment ago can 404 here") |
 | PingOne usernames are case-insensitive, so a matching username can be a different person: do not add that person, report a conflict. A same-username record with no email is the same account. | `syncPrivilegeUsers.js` |
@@ -28,6 +30,7 @@ Every product claim on the Guide page comes from this list. Anything without a s
 - The "Generate Onboarding Link" step in the PingOne console (per user) has no API we could find. It may not be needed once the user is a group member; that is not tested here.
 - Rate limits: this lab discovers them from 429s and does not know the numbers.
 - Region list and `Retry-After` format against our own environment: from PingOne's published behaviour, not exercised by this lab's Real mode yet.
+- Taking the user and the groups from token claims (the owner places it in Privilege's OBO, on-behalf-of, setup): which claim names it uses for the user and for the groups, where each is set, and whether a person who is only in a token ever shows in Privilege's user list. The console swagger's OBO settings (2026-11-02) cover the token exchange only (client, audience, scope, subject token type), with no field for choosing a claim, and this lab has not run it.
 
 ## Real mode
 

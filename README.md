@@ -21,11 +21,11 @@ Changed from the fork: no connections store and no catalog explorer; added the b
 | | Route A: PingOne API | Route B: Privilege console API |
 | --- | --- | --- |
 | What it calls | The PingOne Management API: create the person in Privilege's environment (no password), add them to the Privilege group | `POST /api/{tenant}/v1/users` on the Privilege console |
-| Signs in with | A worker app (client credentials) with the Identity Data Admin role | A console user API key and secret |
+| Signs in with | A PingOne worker app (client credentials) with the Identity Data Admin role, set on that worker app in PingOne (the Privilege app has no role to set) | A console user API key and secret |
 | Evidence | A script the owner runs in daily use | UNVERIFIED against a real console; documented in the swagger and Mock-tested only |
 | Real settings | The `BULK_P1_*` names | The `BULK_P1_*` names (the source of the people) and the `BULK_CONSOLE_*` names |
 
-The people always come from a PingOne source environment. Privilege only knows the people of its own PingOne environment who are in the Privilege group; the trap is that a worker without the role reads an empty list, not a 403, which the plan turns into a blocking warning.
+**Check this first:** Privilege can also take the user and the groups from claims in a token instead of from PingOne, and it can use any claim, for example a PingFederate token's (it is part of Privilege's OBO, on-behalf-of, setup). If your people already arrive in such a token there may be nobody to register; the rest of this lab is for the case where Privilege reads its people from PingOne. How the claims are set up is UNVERIFIED (the owner's statement, 2026-11-15; see `docs/references.md`). Route A is the one to use: it writes to PingOne, and Privilege only reads people from PingOne. Route B is the only route that writes into Privilege itself, and nobody has run it against a real console, so it may not work. The people always come from a PingOne source environment. Privilege only knows the people of its own PingOne environment who are in the Privilege group; the trap is that a worker without the role reads an empty list, not a 403, which the plan turns into a blocking warning.
 
 ## Run from a clone
 
@@ -143,7 +143,7 @@ npm run content-pack
 npm run talk-track  # regenerates docs/talk-track.md; a test fails on drift
 ```
 
-On Node 26 a good `npm test` run (2026-11-14) is 125 server tests, 119 web tests (vitest) and 59 scripts tests, 303 in all; `npm run e2e` adds 31 browser checks (axe runs on seven page states).
+On Node 26 a good `npm test` run (2026-11-15) is 125 server tests, 121 web tests (vitest) and 59 scripts tests, 305 in all; `npm run e2e` adds 31 browser checks (axe runs on seven page states).
 
 `npm run e2e` is the browser run (Mock only). `bash scripts/check-ui-standard.sh` checks the vendored stylesheet against the canonical copy and its pin. The family `check-css.sh` reports one FAIL here, for the vendored shared TopMenu stylesheet (a `prefers-color-scheme` rule); that file is the canonical shared component and is never edited in this lab.
 

@@ -15,6 +15,7 @@ export const UNVERIFIED = [
   "The \"Generate Onboarding Link\" step in the PingOne console (per user) has no API we could find. It may not be needed once the user is a group member; that is not tested here.",
   "Rate limits: this lab discovers them from 429s and does not know the numbers.",
   "Region list and `Retry-After` format against our own environment: from PingOne's published behaviour, not exercised by this lab's Real mode yet.",
+  "Taking the user and the groups from token claims (the owner places it in Privilege's OBO, on-behalf-of, setup): which claim names it uses for the user and for the groups, where each is set, and whether a person who is only in a token ever shows in Privilege's user list. The console swagger's OBO settings (2026-11-02) cover the token exchange only (client, audience, scope, subject token type), with no field for choosing a claim, and this lab has not run it.",
 ];
 
 export const PLACEHOLDERS = [
@@ -155,8 +156,11 @@ export default function Guide() {
           <dt>Privilege's environment</dt><dd>Privilege only knows the users of its own PingOne environment who are members of the Privilege group.</dd>
           <dt>The Privilege group</dt><dd>Being in the environment is not enough: only members of the group count.</dd>
           <dt>People who live elsewhere</dt><dd>A person in another environment is created in Privilege's environment first (same email, username and name; the default population; no password), then added to the group.</dd>
+          <dt>Who writes</dt><dd>Privilege only reads people from PingOne, so route A writes to PingOne, never to Privilege. The Privilege app has no role to set for this.</dd>
+          <dt>Or from token claims</dt><dd>Privilege can take the user and the groups from claims in a token instead of from PingOne, and it can use any claim, for example the claims in a PingFederate token. This is part of Privilege's OBO (on-behalf-of) setup.</dd>
         </dl>
-        <p className="source">Source: a sync script we run ourselves, in daily use, and our SE setup guide for Privilege.</p>
+        <p className="notice" data-state="ok" data-testid="claims-notice"><strong>Check this first:</strong> if your people already arrive in a token that carries the user and the groups Privilege needs, there may be nobody to register. The rest of this page is for the case where Privilege reads its people from PingOne.</p>
+        <p className="source">Source: a sync script we run ourselves, in daily use, and our SE setup guide for Privilege. The token-claims option, and its place in OBO, is the owner's statement of 2026-11-15; how it is set up is UNVERIFIED (see the end of this page).</p>
       </Section>
 
       <Section id="routes" kicker="3 · Two routes" title="Which API do you call?">
@@ -174,7 +178,7 @@ export default function Guide() {
                 <th scope="row">B: Privilege console API</th>
                 <td data-label="What it calls"><code>POST /api/{"{tenant}"}/v1/users</code> on the Privilege console.</td>
                 <td data-label="Evidence"><Chip tone="warn">UNVERIFIED against a real console</Chip></td>
-                <td data-label="Use it when">Only to try it. It is documented in the console's swagger and tested here against a mock, never against a real console.</td>
+                <td data-label="Use it when">Only to try it. It is the one route that writes into Privilege itself, which otherwise only reads people from PingOne. It is documented in the console's swagger and tested here against a mock, never against a real console, so it may not work.</td>
               </tr>
             </tbody>
           </table>
@@ -189,7 +193,7 @@ export default function Guide() {
         </details>
         <ol className="steps" start={0}>
           <Step n={0} title="Prerequisites">
-            <p>You need a worker application in PingOne (client credentials) that holds the Identity Data Admin role on Privilege's environment, and the Privilege group must already exist there.</p>
+            <p>You need a worker application in PingOne (client credentials). The role is set on that worker app in PingOne, not on the Privilege app: give it the Identity Data Admin role on Privilege's environment. The Privilege group must already exist there.</p>
             <p className="notice" data-state="warn"><strong>The trap:</strong> without that role PingOne answers with empty user lists, not a 403. An empty list can mean no people or no permission. Treat an empty destination as a warning, never as good news. This lab does: it raises <code>destination_empty</code> and makes you acknowledge it before it applies anything.</p>
           </Step>
           <Step n={1} title="Get a token">

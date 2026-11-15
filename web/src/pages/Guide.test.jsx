@@ -36,7 +36,26 @@ test("the two routes are compared, with the evidence level of each", () => {
   expect(rows[1]).toHaveTextContent("B: Privilege console API");
   expect(rows[1]).toHaveTextContent("POST /api/{tenant}/v1/users");
   expect(rows[1]).toHaveTextContent("UNVERIFIED against a real console");
+  expect(rows[1]).toHaveTextContent(/the one route that writes into Privilege itself/);
+  expect(rows[1]).toHaveTextContent(/it may not work/);
   expect(screen.getByTestId("section-routes")).toHaveTextContent(/Use it when/);
+});
+
+test("Privilege only reads people from PingOne, and the role is set on the PingOne worker app", () => {
+  render(<Guide />);
+  expect(screen.getByTestId("section-model")).toHaveTextContent(/Privilege only reads people from PingOne, so route A writes to PingOne, never to Privilege/);
+  expect(screen.getByTestId("step-0")).toHaveTextContent(/set on that worker app in PingOne, not on the Privilege app/);
+});
+
+test("the Guide says up front that Privilege can take users and groups from any token claim, and labels how as UNVERIFIED", () => {
+  render(<Guide />);
+  const notice = screen.getByTestId("claims-notice");
+  expect(notice).toHaveTextContent(/Check this first/);
+  expect(notice).toHaveTextContent(/there may be nobody to register/);
+  expect(screen.getByTestId("section-model")).toHaveTextContent(/take the user and the groups from claims in a token instead of from PingOne, and it can use any claim, for example the claims in a PingFederate token/);
+  expect(screen.getByTestId("section-model")).toHaveTextContent(/how it is set up is UNVERIFIED/);
+  expect(screen.getByTestId("section-model")).toHaveTextContent(/part of Privilege's OBO \(on-behalf-of\) setup/);
+  expect(UNVERIFIED.some((u) => /token claims/.test(u) && /OBO/.test(u))).toBe(true);
 });
 
 test("Route A has steps 0 to 7; each call step has a curl block with a Copy button and a JSON excerpt", () => {
