@@ -167,6 +167,11 @@ export function createApp({ env = process.env, lab = labAllowedHosts(env), now =
     if (err?.type === 'entity.too.large') return res.status(413).json({ error: 'too_large', message: 'request too large' });
     if (err instanceof SyntaxError) return res.status(400).json({ error: 'bad_request', message: 'invalid JSON' });
     if (err instanceof URIError) return res.status(400).json({ error: 'bad_request', message: 'bad address' }); // a malformed %-escape in a path (Express reports it as a URIError)
+    // The body parser's other client errors (an unsupported Content-Encoding or charset is a 415, an aborted upload a 400): a 4xx the caller caused, not a server fault.
+    // The message is fixed text: the parser's own wording can echo what the client sent.
+    if (err?.expose === true && Number.isInteger(err.status) && err.status >= 400 && err.status < 500) {
+      return res.status(err.status).json(err.status === 415 ? { error: 'unsupported_media', message: 'unsupported content encoding or charset' } : { error: 'bad_request', message: 'the request could not be read' });
+    }
     return res.status(500).json({ error: 'internal_error', message: 'internal error' });
   });
 

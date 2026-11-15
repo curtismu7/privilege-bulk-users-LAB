@@ -143,7 +143,7 @@ npm run content-pack
 npm run talk-track  # regenerates docs/talk-track.md; a test fails on drift
 ```
 
-On Node 26 a good `npm test` run (2026-11-14) is 115 server tests, 118 web tests (vitest) and 59 scripts tests, 292 in all; `npm run e2e` adds 25 browser checks.
+On Node 26 a good `npm test` run (2026-11-14) is 125 server tests, 119 web tests (vitest) and 59 scripts tests, 303 in all; `npm run e2e` adds 31 browser checks (axe runs on seven page states).
 
 `npm run e2e` is the browser run (Mock only). `bash scripts/check-ui-standard.sh` checks the vendored stylesheet against the canonical copy and its pin. The family `check-css.sh` reports one FAIL here, for the vendored shared TopMenu stylesheet (a `prefers-color-scheme` rule); that file is the canonical shared component and is never edited in this lab.
 
@@ -154,7 +154,7 @@ On Node 26 a good `npm test` run (2026-11-14) is 115 server tests, 118 web tests
 - **The plan shows `destination_empty`.** The worker app probably lacks the Identity Data Admin role on Privilege's environment: PingOne then answers with an empty list instead of a 403. Fix the role and plan again.
 - **A plan says `needs_setup` or Plan is disabled in Real.** The message names the settings the route is missing. Set them in `.env` and restart.
 - **The page is missing, or `/` answers JSON.** The server serves `web/dist`: run `npm run build` first (the Docker image builds it).
-- **A run stops with `circuit_open`.** Most of the first people failed, which is usually one cause. Read the first failed rows, fix it, and plan again; do not just apply again.
+- **A run stops with `circuit_open`.** Most of the most recent people failed (the last 50, once 20 have finished), which is usually one cause. Read the first failed rows, fix it, and plan again; do not just apply again.
 
 ## Docs
 

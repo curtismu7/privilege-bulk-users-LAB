@@ -1,10 +1,10 @@
 import React from "react";
 import Chip from "../components/Chip.jsx";
 import CodeBlock from "../components/CodeBlock.jsx";
-import JsonView from "../json/JsonView.jsx";
+import JsonPane from "../components/JsonPane.jsx";
 
 // The page that teaches. Every product claim here comes from docs/references.md; what is not in it says UNVERIFIED. Requests use
-// $PLACEHOLDER variables only, never a real id. JSON excerpts are shortened examples and go through the shared JsonView (rule 24).
+// $PLACEHOLDER variables only, never a real id. JSON excerpts are shortened examples and go through the shared JsonPane (rule 24).
 
 // docs/references.md, "UNVERIFIED" section. Backticks mark code. A test compares this list with that file.
 export const UNVERIFIED = [
@@ -96,7 +96,7 @@ const SHOW = {
   routeB: { ObjectMeta: {}, Spec: { UserName: "ada.example", EmailID: "ada@people.example", FirstName: "Ada", LastName: "Example", FullName: "Ada Example", Active: true } },
 };
 
-const Json = ({ id, value, label }) => <div className="json-pane"><JsonView value={value} label={label} testId={`json-${id}`} /></div>;
+const Json = ({ id, value, label }) => <div className="json-pane"><JsonPane value={value} label={label} testId={`json-${id}`} /></div>;
 
 function Section({ id, kicker, title, children }) {
   return (

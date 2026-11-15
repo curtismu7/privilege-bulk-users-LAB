@@ -4,10 +4,9 @@
 //   apply for each person to change: create (no password) and add to the Privilege group, or just add. Bounded pool, idempotent.
 // Actions (plan): create+add, add, in-sync, conflict, invalid.  Statuses (apply): created, added, in-sync, conflict, invalid, failed.
 import { BulkError, describe, isUniqueness } from './errors.js';
+import { lower } from './fold.js';
 import { toPerson } from './pingone.js';
 import { runPool } from './pool.js';
-
-const lower = (s) => String(s).toLowerCase();
 
 export async function planA({ p1, sourceEnvId, privilegeEnvId, group, concurrency, signal, limits, progress }) {
   const same = sourceEnvId === privilegeEnvId; // the people already live in Privilege's own environment: nothing to create

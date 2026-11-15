@@ -2,10 +2,9 @@
 // (docs/references.md): the people still come from the PingOne source environment; only the write differs.
 // Actions (plan): create, exists, conflict, invalid.  Statuses (apply): created, exists, conflict, invalid, failed.
 import { describe } from './errors.js';
+import { lower } from './fold.js';
 import { toPerson } from './pingone.js';
 import { runPool } from './pool.js';
-
-const lower = (s) => String(s).toLowerCase();
 
 export async function planB({ p1, con, sourceEnvId, signal, limits, progress }) {
   progress.phase('reading the source');

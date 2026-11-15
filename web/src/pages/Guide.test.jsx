@@ -3,9 +3,11 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import React from "react";
-import { afterEach, expect, test, vi } from "vitest";
+import { afterEach, beforeEach, expect, test, vi } from "vitest";
+import { setJsonView } from "../components/JsonPane.jsx";
 import Guide, { PLACEHOLDERS, UNVERIFIED } from "./Guide.jsx";
 
+beforeEach(() => setJsonView("form"));
 afterEach(() => { cleanup(); vi.restoreAllMocks(); });
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
 const clipboard = (value) => Object.defineProperty(navigator, "clipboard", { configurable: true, value });
@@ -78,13 +80,22 @@ test("the commands use $PLACEHOLDER variables only: every variable is a document
   expect(kinds).not.toMatch(UUID);
 });
 
-test("every JSON excerpt goes through the shared JsonView (a Colored/Raw toggle on each pane)", () => {
+test("every JSON excerpt goes through the shared JsonPane (a Formatted/Raw toggle on each pane, Formatted by default)", () => {
   render(<Guide />);
-  const panes = [...document.querySelectorAll("[data-testid^=json-][data-testid$=-pre]")];
-  expect(panes.length).toBe(10);
-  for (const pre of panes) expect(document.querySelector(`[data-testid=${pre.dataset.testid.replace(/-pre$/, "-toggle")}]`), pre.dataset.testid).not.toBeNull();
-  expect(document.querySelectorAll("pre").length).toBe(panes.length + screen.getAllByTestId("code-block").length); // no other pre: curl blocks and JsonView only
-  const body = screen.getByTestId("json-route-b-pre");
+  const boxes = [...document.querySelectorAll("[data-testid^=json-][data-testid$=-box]")];
+  expect(boxes.length).toBe(10);
+  for (const box of boxes) {
+    const id = box.dataset.testid.replace(/-box$/, "");
+    expect(box, id).toHaveAttribute("data-view", "form");
+    expect(document.querySelector(`[data-testid=${id}-formatted]`), id).not.toBeNull();
+    expect(document.querySelector(`[data-testid=${id}-raw]`), id).not.toBeNull();
+  }
+  expect(document.querySelectorAll("pre").length).toBe(screen.getAllByTestId("code-block").length); // Formatted draws no pre: the only pre blocks are the curl samples
+  const form = screen.getByTestId("json-route-b");
+  for (const key of ["ObjectMeta", "Spec", "UserName", "EmailID", "FirstName", "LastName", "FullName", "Active"]) expect(form).toHaveTextContent(key);
+  fireEvent.click(screen.getByTestId("json-route-b-raw")); // Raw: the exact JSON text, with its quotes
+  const body = screen.getByTestId("json-route-b");
+  expect(body.tagName).toBe("PRE");
   for (const key of ["ObjectMeta", "Spec", "UserName", "EmailID", "FirstName", "LastName", "FullName", "Active"]) expect(body).toHaveTextContent(`"${key}"`);
 });
 
