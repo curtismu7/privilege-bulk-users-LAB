@@ -3,9 +3,10 @@ import userEvent from "@testing-library/user-event";
 import React from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import App from "./App.jsx";
+import { setJsonView } from "./components/JsonPane.jsx";
 import { fakeApi, infoFor, job, makeRows, resultsOf } from "./test-helpers.js";
 
-beforeEach(() => { window.location.hash = ""; try { localStorage.clear(); } catch { /* none */ } delete document.documentElement.dataset.present; delete document.documentElement.dataset.theme; });
+beforeEach(() => { setJsonView("form"); window.location.hash = ""; try { localStorage.clear(); } catch { /* none */ } delete document.documentElement.dataset.present; delete document.documentElement.dataset.theme; });
 afterEach(() => { cleanup(); vi.restoreAllMocks(); });
 const go = (h) => act(() => { window.location.hash = h; window.dispatchEvent(new HashChangeEvent("hashchange")); });
 const PAGES = ["#/guide", "#/run", "#/diagram", "#/audit", "#/help"];
@@ -193,7 +194,10 @@ test("Audit: entries render as text rows, a row opens as JSON, and a failing rea
   expect(rows[0]).toHaveTextContent("a");
   expect(rows[1]).toHaveTextContent("plan");
   await user.click(within(rows[0]).getByRole("button", { name: /Details for entry 1/ }));
-  expect(within(screen.getByTestId("audit-detail")).getByTestId("audit-json-pre")).toHaveTextContent(/"outcome"/);
+  const detail = screen.getByTestId("audit-detail");
+  expect(within(detail).getByTestId("audit-json")).toHaveTextContent(/outcome/); // Formatted (the default): a label per field
+  await user.click(within(detail).getByTestId("audit-json-raw"));
+  expect(within(detail).getByTestId("audit-json")).toHaveTextContent(/"outcome"/); // Raw: the exact JSON text
   cleanup();
   fakeApi({ handlers: { "GET /api/audit": (_b, _s, json) => json(500, { error: "internal_error", message: "The audit log could not be read." }) } });
   render(<App />);

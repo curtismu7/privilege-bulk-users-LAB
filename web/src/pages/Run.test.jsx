@@ -3,9 +3,10 @@ import userEvent from "@testing-library/user-event";
 import React from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import App from "../App.jsx";
+import { setJsonView } from "../components/JsonPane.jsx";
 import { applyJob, fakeApi, infoFor, job, makeRows, resultsOf } from "../test-helpers.js";
 
-beforeEach(() => { window.location.hash = ""; try { localStorage.clear(); } catch { /* none */ } delete document.documentElement.dataset.present; });
+beforeEach(() => { setJsonView("form"); window.location.hash = ""; try { localStorage.clear(); } catch { /* none */ } delete document.documentElement.dataset.present; });
 afterEach(() => { cleanup(); vi.restoreAllMocks(); });
 const go = (h) => act(() => { window.location.hash = h; window.dispatchEvent(new HashChangeEvent("hashchange")); });
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -275,20 +276,24 @@ test("results: a table of people from the results endpoint, filter chips built f
   expect(within(screen.getByTestId("results-table")).getAllByTestId("result-row").length).toBe(50);
 });
 
-test("selecting a row opens its detail as colored JSON (the shared JsonView), with a Raw toggle, and Close puts it away", async () => {
+test("selecting a row opens its detail in the shared JsonPane (Formatted by default, with a Raw toggle), and Close puts it away", async () => {
   await mount({ job: job(), handlers: { "GET /api/jobs/current/results": resultsOf(makeRows(5)) } });
   const user = userEvent.setup();
   await screen.findByTestId("results-table");
   expect(screen.queryByTestId("row-detail")).toBeNull();
   await user.click(screen.getAllByTestId("row-open")[1]);
   const detail = screen.getByTestId("row-detail");
-  const pre = within(detail).getByTestId("row-json-pre");
-  expect(pre).toHaveTextContent('"username"');
-  expect(pre).toHaveTextContent("person2.example");
-  expect(pre).toHaveTextContent('"status"');
+  const form = within(detail).getByTestId("row-json");
+  expect(within(detail).getByTestId("row-json-formatted")).toHaveAttribute("aria-pressed", "true");
+  expect(form).toHaveTextContent("username");
+  expect(form).toHaveTextContent("person2.example");
+  expect(form).toHaveTextContent("status");
   expect(screen.getAllByTestId("result-row")[1]).toHaveAttribute("data-selected", "true");
-  await user.click(within(detail).getByTestId("row-json-toggle"));
-  expect(within(detail).getByTestId("row-json-toggle")).toHaveTextContent("Raw");
+  await user.click(within(detail).getByTestId("row-json-raw"));
+  expect(within(detail).getByTestId("row-json-raw")).toHaveAttribute("aria-pressed", "true");
+  const pre = within(detail).getByTestId("row-json");
+  expect(pre.tagName).toBe("PRE");
+  expect(pre).toHaveTextContent('"username"');
   expect(pre).toHaveTextContent("person2.example");
   await user.click(within(detail).getByRole("button", { name: "Close" }));
   expect(screen.queryByTestId("row-detail")).toBeNull();
@@ -303,7 +308,9 @@ test("hostile usernames, emails, details and statuses are inert text in the tabl
   expect(within(table).getByText("<script>alert(1)</script>")).toBeInTheDocument();
   expect(table.querySelector("img, b, i, script")).toBeNull();
   await userEvent.setup().click(screen.getAllByTestId("row-open")[0]);
-  expect(screen.getByTestId("row-json-pre")).toHaveTextContent(bad);
+  expect(screen.getByTestId("row-json")).toHaveTextContent(bad); // Formatted
+  await userEvent.setup().click(screen.getByTestId("row-json-raw"));
+  expect(screen.getByTestId("row-json")).toHaveTextContent(bad); // Raw
   expect(document.querySelector("img")).toBeNull();
   expect(document.querySelector("script")).toBeNull();
 });

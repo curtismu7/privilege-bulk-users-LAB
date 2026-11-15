@@ -146,6 +146,24 @@ try {
   await page.screenshot({ path: path.join(shots, 'run-missing-role.png'), fullPage: true });
   await axe('the Run page (with a warning and the apply panel)');
 
+  // --- the other pages, and the shared JSON pane in both views (the Audit page holds the entries of the jobs above, so this runs before Reset)
+  await page.goto(`${base}/#/audit`, { waitUntil: 'networkidle' });
+  await t('audit-page').waitFor();
+  await t('audit-table').waitFor();
+  await page.getByRole('button', { name: /Details for entry 1/ }).click();
+  await t('audit-detail').waitFor();
+  check((await t('audit-json-formatted').getAttribute('aria-pressed')) === 'true' && (await t('audit-json-box').getAttribute('data-view')) === 'form', 'the JSON pane opens Formatted (rule 24: a form, one choice for the page)');
+  await axe('the Audit page (JSON pane, Formatted)');
+  await t('audit-json-raw').click();
+  check((await t('audit-json').evaluate((el) => el.tagName)) === 'PRE' && (await t('audit-json').innerText()).includes('"outcome"'), 'the Raw view is the exact JSON text');
+  await axe('the Audit page (JSON pane, Raw)');
+  await page.goto(`${base}/#/diagram`, { waitUntil: 'networkidle' });
+  await t('diagram-lede').waitFor();
+  await axe('the Diagram page');
+  await page.goto(`${base}/#/help`, { waitUntil: 'networkidle' });
+  await t('help-page').waitFor();
+  await axe('the Help page');
+
   // --- Reset from the header
   await t('reset').click();
   await page.waitForFunction(() => document.querySelector('[data-testid="live"]')?.textContent.includes('Reset'), null, { timeout: 10_000 });

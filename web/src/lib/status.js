@@ -41,6 +41,6 @@ export const HINTS = {
   destination_unreadable: "The destination environment could not be read.",
   token_refused: "PingOne refused the worker's credentials.",
   login_required: "The Privilege console refused the API key and secret (401 or 403).",
-  circuit_open: "Too many failures early in the run: it stopped on purpose (the circuit breaker). Nothing more was sent.",
+  circuit_open: "Most of the recent calls failed: it stopped on purpose (the circuit breaker). Nothing more was sent.",
   unreachable: "The page cannot reach this lab's server. Is it running?",
 };

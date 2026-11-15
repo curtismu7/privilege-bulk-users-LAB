@@ -16,7 +16,7 @@ const maskEmail = (e) => { const s = String(e || ''); const at = s.lastIndexOf('
 const KNOWN = new Set(['group_missing', 'source_unreadable', 'destination_unreadable', 'token_refused', 'login_required', 'circuit_open', 'aborted', 'needs_setup']);
 const refuse = (code, message, status) => new BulkError(code, message, { status });
 
-export function createJobs({ makeContext, now = Date.now, audit = () => {}, newId = () => crypto.randomUUID(), breaker = { minSample: 20, ratio: 0.5 }, limits = LIMITS }) {
+export function createJobs({ makeContext, now = Date.now, audit = () => {}, newId = () => crypto.randomUUID(), breaker = { minSample: 20, ratio: 0.5, window: 50 }, limits = LIMITS }) {
   let job = null; let plan = null; let running = Promise.resolve();
   const iso = () => new Date(now()).toISOString();
   const touch = (j) => { j.updatedAt = iso(); };
@@ -47,7 +47,7 @@ export function createJobs({ makeContext, now = Date.now, audit = () => {}, newI
   }
   function fail(j, err) {
     if (j._tripped) {
-      j.error = { code: 'circuit_open', message: `Stopped on purpose: ${j._unexpected} of the first ${j._done} people failed. That is usually one cause (a missing role, a wrong group, a refused credential), not that many bad people. Nothing else was started; ${j.counts.pending ?? 0} are still pending.` };
+      j.error = { code: 'circuit_open', message: `Stopped on purpose: ${j._tripBad} of the last ${j._tripOf} people failed. That is usually one cause (a missing role, a wrong group, a refused credential), not that many bad people. Nothing else was started; ${j.counts.pending ?? 0} are still pending.` };
       return finish(j, 'failed', 'stopped');
     }
     if (err?.code === 'aborted' || (j._ctl.signal.aborted && !err?.code)) {
@@ -100,7 +100,7 @@ export function createJobs({ makeContext, now = Date.now, audit = () => {}, newI
     concurrency ??= p.concurrency;
     const j = begin({ kind: 'apply', route, mode, scenario: p.scenario, users: p.users, concurrency });
     j._rows = p.decisions.map((d) => rowOf(d, d.action === 'create+add' || d.action === 'add' || d.action === 'create' ? 'pending' : d.action));
-    j.warnings = p.warnings; j.total = p.decisions.length; j._done = 0; j._unexpected = 0;
+    j.warnings = p.warnings; j.total = p.decisions.length; j._recent = []; j._recentBad = 0;
     j.counts = route === 'a'
       ? { created: 0, added: 0, 'in-sync': p.counts['in-sync'], conflict: p.counts.conflict, invalid: p.counts.invalid, failed: 0, pending: n }
       : { created: 0, exists: p.counts.exists, conflict: p.counts.conflict, invalid: p.counts.invalid, failed: 0, pending: n };
@@ -116,9 +116,14 @@ export function createJobs({ makeContext, now = Date.now, audit = () => {}, newI
           if (row.status !== 'pending') return;
           Object.assign(row, { status: res.status, detail: res.detail, httpStatus: res.httpStatus ?? null, attempts: res.attempts ?? 0 });
           j.counts.pending--; j.counts[res.status] = (j.counts[res.status] || 0) + 1; j.processed++;
-          j._done++; if (res.unexpected) j._unexpected++;
+          // The breaker looks at the most recent results (a window), not the whole run: a long run that breaks half way must stop promptly.
+          j._recent.push(res.unexpected ? 1 : 0); j._recentBad += res.unexpected ? 1 : 0;
+          if (j._recent.length > (breaker.window ?? 50)) j._recentBad -= j._recent.shift();
           touch(j);
-          if (!j._tripped && j._done >= breaker.minSample && j._unexpected / j._done > breaker.ratio) { j._tripped = true; j._ctl.abort(); }
+          // A stop by the user that came first wins: results still arriving from calls in flight do not turn it into a trip.
+          if (!j._tripped && !j._ctl.signal.aborted && j._recent.length >= breaker.minSample && j._recentBad / j._recent.length > breaker.ratio) {
+            j._tripped = true; j._tripBad = j._recentBad; j._tripOf = j._recent.length; j._ctl.abort();
+          }
         };
         const common = { concurrency, signal: j._ctl.signal, onResult, secrets: ctx.secrets, plan: p };
         await (route === 'a' ? applyA({ ...common, p1: ctx.p1, gate: ctx.gate, privilegeEnvId: ctx.privilegeEnvId }) : applyB({ ...common, con: ctx.con }));

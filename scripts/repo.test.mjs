@@ -132,7 +132,9 @@ test('the vendored shared files match their sha256 pins (never hand-edit a copy:
       pinned++;
     }
   });
-  assert.ok(pinned >= 8, `${pinned} vendored files are pinned (TopMenu, JsonView, floating dialog, return link)`);
+  assert.ok(pinned >= 8, `${pinned} vendored files are pinned (TopMenu, JsonPane and its stylesheet, floating dialog, return link)`);
+  assert.ok(fs.existsSync(path.join(root, 'web/src/components/JsonPane.jsx')) && fs.existsSync(path.join(root, 'web/src/components/JsonPane.css')), 'the shared JsonPane and its stylesheet are vendored (rule 24)');
+  assert.ok(!fs.existsSync(path.join(root, 'web/src/json/JsonView.jsx')), 'the old JsonView copy is gone: rule 24 was amended on 2026-11-14 and JsonPane replaced it');
   const css = crypto.createHash('sha256').update(fs.readFileSync(path.join(root, 'web/src/styles/standalone-ui.css'))).digest('hex');
   assert.equal(css, read('scripts/standalone-ui.sha256').trim(), 'standalone-ui.css matches scripts/standalone-ui.sha256');
 });

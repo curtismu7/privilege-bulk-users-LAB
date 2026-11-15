@@ -66,3 +66,17 @@ test('an unknown route and a malformed body answer JSON, never an HTML error pag
   const cross = await s.call('POST', '/api/plan', { route: 'a' }, { origin: 'https://evil.example' });
   assert.equal(cross.status, 403); assert.equal(cross.json.error, 'cross_origin');
 });
+
+test('an unsupported Content-Encoding or charset is a 415 in JSON with fixed text, not a 500 and not an echo of what was sent', async () => {
+  const post = (headers) => fetch(`${s.origin}/api/plan`, { method: 'POST', headers: { origin: s.origin, ...headers }, body: '{}' });
+  const enc = await post({ 'content-type': 'application/json', 'content-encoding': 'x-<script>alert(1)</script>' });
+  const encBody = await enc.text();
+  assert.equal(enc.status, 415, encBody);
+  assert.equal(JSON.parse(encBody).error, 'unsupported_media');
+  assert.ok(!encBody.includes('script'), 'the encoding name is not echoed');
+  const cs = await post({ 'content-type': 'application/json; charset=iso-8859-1' }); // the parser accepts any utf-*; this one it refuses
+  assert.equal(cs.status, 415);
+  assert.equal((await cs.json()).error, 'unsupported_media');
+  const plain = await post({ 'content-type': 'application/json' }); // the same request with nothing wrong is read normally
+  assert.notEqual(plain.status, 415); assert.notEqual(plain.status, 500);
+});

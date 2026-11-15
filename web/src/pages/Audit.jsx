@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import * as api from "../api.js";
-import JsonView from "../json/JsonView.jsx";
+import JsonPane from "../components/JsonPane.jsx";
 import { Untrusted } from "../lib/Untrusted.jsx";
 
 // The audit page: what this lab did, newest first. Entries are summaries (never a person's email, never a secret); the page
@@ -43,7 +43,7 @@ export default function Audit() {
       )}
       {entries && selected !== null && entries[selected] && (
         <section className="card" aria-label="Audit entry" data-testid="audit-detail">
-          <div className="json-pane"><JsonView value={entries[selected]} label="This entry, as the server sent it" testId="audit-json" /></div>
+          <div className="json-pane"><JsonPane value={entries[selected]} label="This entry, as the server sent it" testId="audit-json" /></div>
         </section>
       )}
     </div>

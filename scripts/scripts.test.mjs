@@ -96,6 +96,8 @@ test('e2e.mjs drives only test ids the web app has, and the contract ones are al
     const literal = new RegExp(`(?:data-testid|testId|testid)=\\{?["'\`]${id}["'\`]`).test(source);
     const prefix = `${id.split('-')[0]}-`; // nav-run, route-a, ack-destination_empty: built from a template such as nav-${id}
     const template = id.includes('-') && new RegExp(`(?:data-testid|testId)=\\{\`${prefix}\\$\\{`).test(source);
-    assert.ok(literal || template, `the web app has no test id ${id}`);
+    const paneBase = /^(.+)-(?:box|formatted|raw)$/.exec(id)?.[1]; // the vendored JsonPane derives X-box, X-formatted and X-raw from a testId="X" prop
+    const pane = paneBase !== undefined && new RegExp(`testId=\\{?["'\`]${paneBase}["'\`]`).test(source) && /\$\{testId\}-formatted/.test(source);
+    assert.ok(literal || template || pane, `the web app has no test id ${id}`);
   }
 });

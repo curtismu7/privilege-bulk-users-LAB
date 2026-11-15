@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from "react";
 import * as api from "../api.js";
-import JsonView from "../json/JsonView.jsx";
 import { HINTS, TONE, lookup, testKey } from "../lib/status.js";
 import { visibleLine } from "../lib/visible.js";
 import Chip from "./Chip.jsx";
+import JsonPane from "./JsonPane.jsx";
 import Safe from "./Safe.jsx";
 
 const PAGE = 100;
@@ -84,7 +84,7 @@ export default function Results() {
             <h3>Row {String(selected.n)}</h3>
             <button type="button" onClick={() => setSelected(null)}>Close</button>
           </div>
-          <div className="json-pane"><JsonView value={selected} label="This row, as the server sent it" testId="row-json" /></div>
+          <div className="json-pane"><JsonPane value={selected} label="This row, as the server sent it" testId="row-json" /></div>
         </div>
       )}
     </section>

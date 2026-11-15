@@ -9,6 +9,7 @@
 // go on without them); writes return the result so one bad person is one failed row.
 import { LIMITS } from './config.js';
 import { BulkError, safeCode } from './errors.js';
+import { lower } from './fold.js';
 
 const str = (v, n = 200) => (typeof v === 'string' ? v.trim().slice(0, n) : '');
 export const toPerson = (u) => ({ id: str(u?.id, 64), username: str(u?.username), email: str(u?.email), given: str(u?.name?.given, 100), family: str(u?.name?.family, 100) });
@@ -114,7 +115,7 @@ export function createPingOne({ resilient, region, workerEnvId, clientId, client
     async findUserByEmail(envId, email) {
       const r = await api('GET', envId, `/users?filter=${encodeURIComponent(`email eq "${String(email).replace(/[\\"]/g, '')}"`)}`);
       if (r.status !== 200) return null;
-      const u = r.json?._embedded?.users?.find((x) => String(x?.email ?? '').toLowerCase() === String(email).toLowerCase());
+      const u = r.json?._embedded?.users?.find((x) => lower(x?.email ?? '') === lower(email));
       return u && typeof u.id === 'string' ? toPerson(u) : null;
     },
     createUser: (envId, p, populationId) => api('POST', envId, '/users', {

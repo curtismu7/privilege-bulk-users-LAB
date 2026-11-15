@@ -116,7 +116,7 @@ Row = { n, username, email /* masked: a***@host */, status, detail, httpStatus: 
 
 Warning codes: `destination_empty` (blocking; the destination answered with no users at all, which in PingOne can mean the worker lacks the Identity Data Admin role rather than an empty environment), `truncated` (blocking; the source is over `limits.maxUsers`, only the first `maxUsers` are planned), `group_missing` makes the job `failed` with that error code instead of a warning.
 
-Error codes inside `job.error`: `group_missing`, `source_unreadable`, `destination_unreadable`, `token_refused`, `login_required` (route b, console 401/403), `circuit_open` (too many failures early in an apply; the run stopped on purpose), `aborted`.
+Error codes inside `job.error`: `group_missing`, `source_unreadable`, `destination_unreadable`, `token_refused`, `login_required` (route b, console 401/403), `circuit_open` (most of the most recent people failed in an apply: judged over the last 50 results once 20 have finished; the run stopped on purpose), `aborted` (a stop by the user always wins over a breaker trip that comes after it).
 
 ## Settings (Real only; the lab's own `.env` beside `docker-compose.yml`, mode 600)
 
@@ -140,4 +140,6 @@ BULK_CONSOLE_INSECURE_TLS=1              # optional; the local desktop console's
 - **A create whose answer was lost.** If a create was sent more than once and the retry says "already exists", the lab looks the person up by email: the same email and username is ours (they still get added to the group, status `created`); anything else is a `conflict`.
 - **Redirects are never followed**, and a response over 8 MB is refused. An upstream `code` is shown only if it looks like a code (upper-case words); any other text, such as an echoed header, is dropped.
 - **Listing limits.** A source is cut at `limits.maxUsers` (a blocking `truncated` warning). Any single listing stops at 1,000 pages of 100 (100,000 people); a bigger Privilege environment stops with `destination_unreadable`.
+- **Request bodies.** JSON only, up to 20 KB. A body that is too large is a 413 `too_large`, unreadable JSON is a 400 `bad_request`, and an unsupported `Content-Encoding` or charset is a 415 `unsupported_media`. Every one answers JSON with fixed text; nothing the client sent is echoed back.
+- **Matching.** Two people are the same when their email (or username) is equal after folding the ASCII letters to lower case. Characters outside ASCII are compared as they are, so a look-alike such as the Kelvin sign (U+212A) is never taken for the letter k. A real duplicate that slips past is a `conflict` from PingOne, never an add to somebody else's account.
 - **Response headers.** Every response carries `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer` and a `Content-Security-Policy` that allows only this origin (`default-src 'self'`, `frame-ancestors 'none'`, `object-src 'none'`).

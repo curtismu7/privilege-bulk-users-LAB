@@ -55,6 +55,50 @@ test('a few failures do not trip it: the run finishes and names them', async () 
   assert.equal(done.state, 'done'); assert.equal(done.counts.failed, 4); assert.equal(done.counts.created, 96); assert.equal(done.counts.pending, 0);
 });
 
+test('the circuit breaker judges the most recent people, so a long run that breaks half way stops promptly', async () => {
+  let n = 0;
+  const p1 = fakeP1(people(Array.from({ length: 400 }, (_, i) => `u${i}`)), { createUser: async () => (++n <= 200 ? { status: 201, json: { id: 'x' }, tries: 1 } : { status: 403, json: { code: 'ACCESS_FAILED' }, tries: 1 }) });
+  const j = jobsFor(p1); // the default breaker
+  const plan = await run(j);
+  j.startApply({ planId: plan.planId, confirm: 'REGISTER 400', mode: 'mock', writesEnabled: false, concurrency: 1 }); await j.whenIdle();
+  const done = j.current();
+  assert.equal(done.state, 'failed'); assert.equal(done.error.code, 'circuit_open');
+  // Counted over the whole run it would take more than 200 failures (200 good + 200 bad is only half). Over the last 50 it takes about 26.
+  assert.ok(done.counts.failed >= 20 && done.counts.failed < 60, JSON.stringify(done.counts));
+  assert.ok(done.counts.pending > 100, JSON.stringify(done.counts));
+  assert.match(done.error.message, /of the last \d+ people failed/);
+});
+
+test('a few early failures in a long, healthy run do not trip the breaker (8 of the first 20 is 40%)', async () => {
+  let n = 0;
+  const p1 = fakeP1(people(Array.from({ length: 300 }, (_, i) => `u${i}`)), { createUser: async () => (++n <= 8 ? { status: 500, json: null, tries: 4 } : { status: 201, json: { id: 'x' }, tries: 1 }) });
+  const j = jobsFor(p1);
+  const plan = await run(j);
+  j.startApply({ planId: plan.planId, confirm: 'REGISTER 300', mode: 'mock', writesEnabled: false, concurrency: 1 }); await j.whenIdle();
+  const done = j.current();
+  assert.equal(done.state, 'done'); assert.equal(done.counts.failed, 8); assert.equal(done.counts.created, 292);
+});
+
+test('a stop by the user wins over a breaker trip that comes after it: the job ends aborted, not circuit_open', async () => {
+  let j; let calls = 0;
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  const p1 = fakeP1(people(Array.from({ length: 100 }, (_, i) => `u${i}`)), {
+    createUser: async () => {
+      const mine = ++calls;
+      await wait(mine === 1 ? 5 : 30); // all 16 calls are in flight before the stop; the first one stops the job at 5 ms, the other 15 finish (failing) at 30 ms
+      if (mine === 1) j.abort();
+      return { status: 403, json: { code: 'ACCESS_FAILED' }, tries: 1 };
+    },
+  });
+  j = jobsFor(p1, { breaker: { minSample: 10, ratio: 0.5 } });
+  const plan = await run(j);
+  // The stop comes first; the failing results that arrive after it are enough to trip the breaker (10 of 10), and must not turn the stop into circuit_open.
+  j.startApply({ planId: plan.planId, confirm: 'REGISTER 100', mode: 'mock', writesEnabled: false, concurrency: 16 }); await j.whenIdle();
+  const done = j.current();
+  assert.equal(done.error.code, 'aborted', JSON.stringify(done.error));
+  assert.equal(done.state, 'aborted');
+});
+
 test('an unexpected exception is "internal error"; a coded one is shown, with secrets scrubbed', async () => {
   const boom = jobsFor(fakeP1([], { listUsers: async () => { throw new Error('connect ECONNREFUSED 10.0.0.9 token=abc123'); } }));
   const a = await run(boom);

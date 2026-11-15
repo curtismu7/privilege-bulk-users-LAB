@@ -78,6 +78,16 @@ test('a create carries the default population and a JSON content type', async ()
   assert.equal((await p1.findUserByEmail(MOCK.privilegeEnvId, 'NEWCOMER@corp.example'))?.username, 'newcomer', 'and the lookup finds it, case-insensitively');
 });
 
+test('the lookup by email does not take a look-alike for the same account (the Kelvin sign is not the letter k)', async () => {
+  const world = createMockWorld({ scenario: 'clean', users: 100, region: 'com', latencyMs: 0 });
+  const { p1 } = client(world.fetchImpl, { clientId: MOCK.clientId, clientSecret: MOCK.clientSecret });
+  assert.equal((await p1.createUser(MOCK.privilegeEnvId, { username: 'k.smith', email: 'k.smith@corp.example', given: 'K', family: 'S' }, MOCK.populationId)).status, 201);
+  // The mock's filter folds with toLowerCase, as a real server might, so it returns the plain-letter account for the Kelvin-sign query;
+  // the client's own check must then refuse it.
+  assert.equal(await p1.findUserByEmail(MOCK.privilegeEnvId, 'K.smith@corp.example'), null);
+  assert.equal((await p1.findUserByEmail(MOCK.privilegeEnvId, 'K.SMITH@corp.example'))?.username, 'k.smith', 'ordinary case differences still find it');
+});
+
 test('the pool never runs more than `concurrency` at once and does use that many', async () => {
   let live = 0; let peak = 0;
   await runPool(Array.from({ length: 40 }, (_, i) => i), 5, async () => { live++; peak = Math.max(peak, live); await new Promise((r) => setTimeout(r, 3)); live--; });

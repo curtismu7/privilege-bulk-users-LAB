@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased: rule 24 and the review nits
+
+- **The shared JsonPane (rule 24, amended 2026-11-14).** Every JSON pane (the Guide's excerpts, a row's detail, an audit entry) now renders through the shared `JsonPane` (a Formatted form by default, with a Raw toggle), vendored byte for byte with its stylesheet and sha256 pins. It replaces the old `JsonView`, which is gone from the canonical shared folder. Control, bidi and zero-width characters still show as escapes in both views (`web/src/safeText.js` hands the lab's `visible()` to it).
+- **The circuit breaker judges a window.** It looks at the most recent 50 results (once 20 have finished), not the whole run, so a long run that breaks half way stops promptly instead of needing hundreds of failures. A run of 50 people or fewer behaves as before. A stop by the user that came first is never turned into a `circuit_open` by the results still arriving from calls in flight.
+- **Matching folds ASCII only.** `toLowerCase()` folded look-alikes such as the Kelvin sign (U+212A) onto plain letters, which could match a person to somebody else's account and add that account to the Privilege group. Email and username matching now folds the ASCII letters only (`server/src/fold.js`), in the plan, the route-B listing and the lookup after a lost create answer.
+- **An unsupported `Content-Encoding` or charset is a 415** (`unsupported_media`, fixed text), not a 500.
+- **Wider accessibility coverage in `npm run e2e`.** axe now also runs on the Audit page (the JSON pane in both views), the Diagram page and the Help page.
+
 ## 0.1.0 (unreleased): first version
 
 A new standalone lab, forked from [privilege-api-explorer-LAB](https://github.com/curtismu7/privilege-api-explorer-LAB): its own repo, port, shelf entry, content pack and history. The explorer's connections store and catalog explorer are gone; everything below is new.
