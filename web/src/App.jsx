@@ -9,6 +9,7 @@ import Help from "./pages/Help.jsx";
 import Run from "./pages/Run.jsx";
 import { PresentBar, PresentProvider, usePresent } from "./present/Present.jsx";
 import TopMenu, { applyFontSize } from "./top-menu/TopMenu.jsx";
+import VerifyMark from "./components/VerifyMark.jsx";
 
 // The family launcher address, used only when this server has no shelf URL of its own (GET /api/shelf answers null).
 const FAMILY_SHELF = "https://local.ping-devops.com:8443/";
@@ -111,6 +112,7 @@ function Shell() {
           onReset={reset}
         >
           <span className="chip" data-testid="mode">Mode: {mode}</span>
+          <VerifyMark id="privilege-bulk-users" />
         </TopMenu>
       </header>
       <PresentBar />
