@@ -160,6 +160,26 @@ try {
   await page.goto(`${base}/#/diagram`, { waitUntil: 'networkidle' });
   await t('diagram-lede').waitFor();
   await axe('the Diagram page');
+  // Arrow labels: drawn above the boxes (none left as SVG text under them), the walked arrow's label is marked and raised, and no label
+  // overlaps another label or sits on a box.
+  await page.waitForSelector('.flow-label');
+  await page.locator('.controls select').nth(1).selectOption('0.5'); // slow, so a loaded machine cannot tick past the step under test
+  await page.getByRole('button', { name: 'Simulate' }).click();
+  await page.waitForSelector('.flow-label--on');
+  const lab = await page.evaluate(() => {
+    const els = [...document.querySelectorAll('.flow-label')]; const rects = els.map((l) => l.getBoundingClientRect());
+    const boxes = [...document.querySelectorAll('.react-flow__node')].map((n) => n.getBoundingClientRect());
+    const hit = (a, b) => a.x < b.right && b.x < a.right && a.y < b.bottom && b.y < a.bottom;
+    let pairs = 0; for (let i = 0; i < rects.length; i++) for (let j = i + 1; j < rects.length; j++) if (hit(rects[i], rects[j])) pairs++;
+    const hot = els.filter((l) => l.classList.contains('flow-label--on')); const other = els.find((l) => !l.classList.contains('flow-label--on'));
+    return { n: els.length, svg: document.querySelectorAll('.react-flow__edge-text').length, pairs, onBox: rects.filter((r) => boxes.some((b) => hit(r, b))).length, hot: hot.length, hotColour: hot[0] && getComputedStyle(hot[0]).color, otherColour: other && getComputedStyle(other).color, hotZ: hot[0] && getComputedStyle(hot[0]).zIndex, otherZ: other && getComputedStyle(other).zIndex };
+  });
+  check(lab.n >= 5 && lab.svg === 0, `arrow labels are drawn above the boxes, none left as SVG text (${lab.n} labels, ${lab.svg} SVG)`);
+  check(lab.hot === 1 && lab.otherColour && lab.hotColour !== lab.otherColour, `the walked arrow's label changes colour (${lab.otherColour} -> ${lab.hotColour})`);
+  check(Number(lab.hotZ) > Number(lab.otherZ), `the walked arrow's label is raised above the others (z ${lab.hotZ} vs ${lab.otherZ})`);
+  check(lab.pairs === 0 && lab.onBox === 0, `no label overlaps another label or a box (${lab.pairs} overlaps, ${lab.onBox} on a box)`);
+  await axe('the Diagram page while an arrow is walked');
+  await page.locator('.controls').getByRole('button', { name: 'Reset' }).click();
   await page.goto(`${base}/#/help`, { waitUntil: 'networkidle' });
   await t('help-page').waitFor();
   await axe('the Help page');

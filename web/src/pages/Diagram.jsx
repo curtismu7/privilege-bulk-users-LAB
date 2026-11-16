@@ -1,9 +1,10 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { Background, Controls, Handle, MarkerType, Position, ReactFlow, applyNodeChanges } from "@xyflow/react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Background, BaseEdge, Controls, Handle, MarkerType, Position, ReactFlow, ViewportPortal, applyNodeChanges, getBezierPath, useStore } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { get } from "../api.js";
 import { usePresent } from "../present/Present.jsx";
 import { sourceHref, sourceLabel } from "../lib/sources.js";
+import { placeLabels, slotPoint } from "../lib/labelPlacement.js";
 
 // The two routes (route-a, route-b). The picture is diagram-studio/1 DATA (server/diagrams/*.json) fetched by name from /api/diagrams/:name
 // (rule 17): nothing in this file lists a box or an arrow. Boxes drag; Simulate walks one run, Reset restores positions and state, the speed
@@ -29,7 +30,7 @@ export function flowEdges(doc, active, animate) {
   const at = Object.fromEntries(doc.nodes.map((n) => [n.id, { x: n.x, y: n.y }]));
   return doc.edges.map((e, i) => {
     const id = `e${i}`; const [sh, th] = slots(e, at); const on = active.has(id);
-    return { id, source: e.source, sourceHandle: sh, target: e.target, targetHandle: th, label: e.label, animated: on && animate, className: `${on ? "flow__edge--on" : ""}${e.dashed ? " flow__edge--dashed" : ""}`, markerEnd: { type: MarkerType.ArrowClosed } };
+    return { id, type: "arrow", source: e.source, sourceHandle: sh, target: e.target, targetHandle: th, label: e.label, animated: on && animate, className: `${on ? "flow__edge--on" : ""}${e.dashed ? " flow__edge--dashed" : ""}`, markerEnd: { type: MarkerType.ArrowClosed } };
   });
 }
 
@@ -45,6 +46,60 @@ function Box({ data }) {
   );
 }
 const nodeTypes = { box: Box };
+
+// The curve only. Its label is not drawn here (an SVG label would sit under the boxes): Labels draws every label above them.
+function Arrow({ sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, data: _data, label: _label, ...rest }) {
+  const [path] = getBezierPath({ sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition });
+  return <BaseEdge path={path} {...rest} />;
+}
+const edgeTypes = { arrow: Arrow };
+
+// The boxes as React Flow measured them (our nodes are controlled, so the sizes are not on them). A box not measured yet gets the
+// size the page draws it at (220px wide); the measured size replaces that a moment later.
+const boxesOf = (s) => [...s.nodeLookup.values()].map((n) => ({ id: n.id, x: n.internals.positionAbsolute.x, y: n.internals.positionAbsolute.y, w: n.measured?.width ?? 220, h: n.measured?.height ?? 64 }));
+const sameBoxes = (a, b) => a.length === b.length && a.every((n, i) => n.id === b[i].id && n.x === b[i].x && n.y === b[i].y && n.w === b[i].w && n.h === b[i].h);
+
+// Every arrow's label, in a layer above the boxes (React Flow's ViewportPortal), each on the first spot along its own arrow that
+// touches no other label and no box (lib/labelPlacement.js). The label of the arrow being walked turns accent-coloured and bold
+// and is raised above the others. Labels take no clicks: the boxes under them stay draggable.
+function Labels({ edges, present }) {
+  const boxes = useStore(boxesOf, sameBoxes);
+  const els = useRef(new Map());
+  const observer = useRef(null);
+  const [sizes, setSizes] = useState(() => new Map()); // label id -> { w, h } as drawn; until then the placement estimates
+  useEffect(() => {
+    observer.current = new ResizeObserver((entries) => setSizes((prev) => {
+      let next = null;
+      for (const { target: el } of entries) {
+        const w = el.offsetWidth; const h = el.offsetHeight; const old = prev.get(el.dataset.labelId);
+        if (w > 0 && h > 0 && (!old || old.w !== w || old.h !== h)) { next ||= new Map(prev); next.set(el.dataset.labelId, { w, h }); }
+      }
+      return next || prev;
+    }));
+    for (const el of els.current.values()) observer.current.observe(el);
+    return () => observer.current.disconnect();
+  }, []);
+  const placed = useMemo(() => {
+    const by = new Map(boxes.map((b) => [b.id, b]));
+    const input = edges.flatMap((e) => {
+      const a = by.get(e.source); const b = by.get(e.target);
+      const from = a && slotPoint(a, e.sourceHandle); const to = b && slotPoint(b, e.targetHandle);
+      return from && to && e.label ? [{ id: e.id, text: e.label, from, to, prefer: 0, size: sizes.get(e.id) }] : [];
+    });
+    return placeLabels({ edges: input, boxes, fontPx: present ? 13 : 11 });
+  }, [boxes, edges, present, sizes]);
+  return (
+    <ViewportPortal>
+      {edges.filter((e) => placed.has(e.id)).map((e) => {
+        const at = placed.get(e.id); const on = e.className.includes("flow__edge--on");
+        return (
+          <div key={e.id} ref={(el) => { if (el) { els.current.set(e.id, el); observer.current?.observe(el); } else els.current.delete(e.id); }} data-label-id={e.id}
+            className={`flow-label${on ? " flow-label--on" : ""}`} data-testid={`flow-label-${e.id.slice(1)}`} style={{ transform: `translate(-50%, -50%) translate(${at.x}px, ${at.y}px)`, zIndex: on ? 3 : 1 }}>{e.label}</div>
+        );
+      })}
+    </ViewportPortal>
+  );
+}
 
 export default function Diagram({ theme = "system" }) {
   const { present } = usePresent();
@@ -118,8 +173,8 @@ export default function Diagram({ theme = "system" }) {
       {error && <p className="err-text" role="alert">Could not load the diagram ({error}).</p>}
       <div className="flow-wrap" role="group" aria-label="Diagram of the chosen route: this page, this lab, PingOne or the Privilege console API. Boxes can be dragged.">
         {doc && (
-          <ReactFlow key={flowKey} nodes={nodes} edges={edges} nodeTypes={nodeTypes} onNodesChange={onNodesChange} colorMode={theme} fitView fitViewOptions={{ padding: 0.12 }} nodesConnectable={false} proOptions={{ hideAttribution: true }} minZoom={0.2}>
-            <Background /><Controls showInteractive={false} />
+          <ReactFlow key={flowKey} nodes={nodes} edges={edges} nodeTypes={nodeTypes} edgeTypes={edgeTypes} onNodesChange={onNodesChange} colorMode={theme} fitView fitViewOptions={{ padding: 0.12 }} nodesConnectable={false} proOptions={{ hideAttribution: true }} minZoom={0.2}>
+            <Background /><Controls showInteractive={false} /><Labels edges={edges} present={present} />
           </ReactFlow>
         )}
       </div>
