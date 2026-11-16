@@ -10,7 +10,7 @@ browser  --same-origin-->  server (loopback, port 7817)  --Mock-->  in-process m
                                      the one Privilege console origin         (route b)
 ```
 
-The same picture is the Diagram page: two diagram-studio/1 data files, `server/diagrams/route-a.json` and `route-b.json`, checked when the server starts and fetched by name from `GET /api/diagrams/:name`. Nothing in the page lists a box or an arrow. The "This lab" box of each route also carries `sources`: the code behind it, as file and line ranges, with the commit they were read at in `repo`. `server/test/diagrams.test.js` checks (`server/src/verifySources.js`) that each cited file exists and the range is inside it; it does not notice code that moved within a file, so re-read the lines when that code changes. The page does not show them yet.
+The same picture is the Diagram page: two diagram-studio/1 data files, `server/diagrams/route-a.json` and `route-b.json`, checked when the server starts and fetched by name from `GET /api/diagrams/:name`. Nothing in the page lists a box or an arrow. The "This lab" box of each route also carries `sources`: the code behind it, as file and line ranges, with the commit they were read at in `repo`. `server/test/diagrams.test.js` checks (`server/src/verifySources.js`) that each cited file exists and the range is inside it; it does not notice code that moved within a file, so re-read the lines when that code changes. The Diagram page lists them under the picture ("Where this is in the code"), as links to that file at that commit.
 
 ## The pipeline
 

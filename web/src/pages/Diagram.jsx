@@ -3,6 +3,7 @@ import { Background, Controls, Handle, MarkerType, Position, ReactFlow, applyNod
 import "@xyflow/react/dist/style.css";
 import { get } from "../api.js";
 import { usePresent } from "../present/Present.jsx";
+import { sourceHref, sourceLabel } from "../lib/sources.js";
 
 // The two routes (route-a, route-b). The picture is diagram-studio/1 DATA (server/diagrams/*.json) fetched by name from /api/diagrams/:name
 // (rule 17): nothing in this file lists a box or an arrow. Boxes drag; Simulate walks one run, Reset restores positions and state, the speed
@@ -103,6 +104,7 @@ export default function Diagram({ theme = "system" }) {
     });
   }, [doc, moved, cur, curNodes]);
   const edges = useMemo(() => (doc ? flowEdges(doc, curEdges, !reduced()) : []), [doc, curEdges]);
+  const cited = useMemo(() => (doc ? doc.nodes.filter((n) => Array.isArray(n.sources) && n.sources.length) : []), [doc]);
   return (
     <>
       <h1>The two routes, drawn</h1>
@@ -122,6 +124,18 @@ export default function Diagram({ theme = "system" }) {
         )}
       </div>
       <p className="caption" role="status" aria-live="polite" data-testid="caption">{cur ? `Step ${step + 1} of ${steps.length}: ${cur.what}` : "Press Simulate to walk one run through the diagram."}</p>
+      {ready && cited.length > 0 && (
+        <section className="card" aria-label="Where this is in the code" data-testid="diagram-sources">
+          <h2>Where this is in the code</h2>
+          <ul>
+            {cited.map((n) => n.sources.map((src, i) => {
+              const href = sourceHref(doc.repo, src);
+              return <li key={`${n.id}-${i}`}>{n.label}: {src.label && <>{src.label}, </>}{href ? <a href={href} target="_blank" rel="noopener noreferrer">{sourceLabel(src)}</a> : <code>{sourceLabel(src)}</code>}</li>;
+            }))}
+          </ul>
+          <p className="hint">{doc.repo?.rev ? `Read at commit ${doc.repo.rev.slice(0, 7)}. ` : ""}These are pointers, not a live view: a test checks each file and line range still exists, but it cannot tell when the code has moved within a file.</p>
+        </section>
+      )}
     </>
   );
 }
