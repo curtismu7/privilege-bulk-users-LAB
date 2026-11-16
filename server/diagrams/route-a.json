@@ -3,6 +3,10 @@
   "id": "route-a",
   "title": "Route A: register every user through the PingOne API",
   "lede": "Read the people from the source environment, make sure each one exists in Privilege's own PingOne environment, and put each one in the Privilege group. Plan first, apply second, plan again to prove nothing is left. Simulated in Mock.",
+  "repo": {
+    "url": "https://github.com/curtismu7/privilege-bulk-users-LAB",
+    "rev": "53113c1c1c11fbbf05499a60ac33761708684bf4"
+  },
   "groups": {
     "client": {
       "label": "Your side",
@@ -40,7 +44,27 @@
         "Holds the worker secret (write-only). Bounded pool, backs off on 429, never stops for one bad user."
       ],
       "x": 440,
-      "y": 150
+      "y": 150,
+      "sources": [
+        {
+          "path": "server/src/routeA.js",
+          "line": 11,
+          "end_line": 71,
+          "label": "planA"
+        },
+        {
+          "path": "server/src/routeA.js",
+          "line": 75,
+          "end_line": 107,
+          "label": "applyA"
+        },
+        {
+          "path": "server/src/http.js",
+          "line": 60,
+          "end_line": 92,
+          "label": "resilient request"
+        }
+      ]
     },
     {
       "id": "src",

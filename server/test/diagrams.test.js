@@ -5,6 +5,7 @@ import test, { after, before } from 'node:test';
 import { createApp } from '../src/app.js';
 import { DIAGRAM_DIR, DIAGRAM_NAMES, createDiagrams } from '../src/diagrams.js';
 import { validateDiagram } from '../src/diagramStudioValidate.js';
+import { verifySources } from '../src/verifySources.js';
 import { runChecks } from '../src/doctor.js';
 import { startApp, tmpDir } from './helpers.js';
 import { installNetguard } from './netguard.js';
@@ -120,4 +121,26 @@ test('lookups never reach object prototypes: only the allow-list names resolve',
 test('doctor has a diagrams check that passes on the shipped files', () => {
   const c = runChecks({ env: { ...process.env, PBU_DATA_DIR: tmpDir() } }).find((x) => x.id === 'diagrams');
   assert.equal(c.level, 'pass'); assert.match(c.detail, /2 diagrams are valid diagram-studio\/1 data/);
+});
+
+// Code pointers (diagram-studio `sources`): the "This lab" box of each route names the code behind it. This reads the working tree, so it
+// catches a deleted, renamed or shortened file; it does NOT notice code that moved within a file (the lines still exist).
+const REPO_ROOT = path.resolve(DIAGRAM_DIR, '../..');
+const sourcesOf = (d) => d.nodes.flatMap((n) => n.sources ?? []);
+
+test('every code pointer in the diagrams names a file and line range that exist in this repo, and the diagram pins the commit it was read at', () => {
+  for (const n of DIAGRAM_NAMES) {
+    const d = read(n);
+    assert.match(d.repo?.rev ?? '', /^[0-9a-f]{40}$/, `${n} pins the commit its sources were read at`);
+    assert.equal(sourcesOf(d).length, 3, `${n} cites three places (a check over nothing would pass)`);
+    assert.deepEqual(verifySources(d, REPO_ROOT), [], n);
+  }
+});
+
+test('the code-pointer check fails on a renamed file, a range past the end of the file, and a path that leaves the repo', () => {
+  const bad = (edit) => { const d = read('route-a'); edit(d.nodes.find((x) => x.sources).sources); return verifySources(d, REPO_ROOT).join('|'); };
+  assert.match(bad((s) => { s[0].path = 'server/src/routeZ.js'; }), /file not found/);
+  assert.match(bad((s) => { s[0].end_line = 99999; }), /the file has only \d+ lines/);
+  assert.match(bad((s) => { s[0].path = '../../etc/hosts'; }), /leaves the repository/);
+  assert.deepEqual(validateDiagram({ ...read('route-a'), repo: { url: 'http://x.example/r', rev: 'abc' } }).length > 0, true, 'a repo that is not https with a full commit is refused');
 });
