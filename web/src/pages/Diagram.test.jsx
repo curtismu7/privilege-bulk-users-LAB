@@ -188,3 +188,35 @@ test("the real route-a and route-b files show their three code pointers, each li
     expect(screen.getByTestId("diagram-sources")).toHaveTextContent(`Read at commit ${rev.slice(0, 7)}`);
   }
 });
+
+// Arrow labels: drawn in a layer above the boxes; the walked arrow's label is marked and raised.
+test("every arrow's label is drawn from the data, and during Simulate only the walked arrow's label is marked and raised above the others", async () => {
+  const docs = { one: doc("one", "Model one", 300) };
+  fakeApi({ handlers: serve(docs) });
+  const user = userEvent.setup();
+  mount();
+  expect(await screen.findByTestId("flow-label-0")).toHaveTextContent("alpha to beta");
+  expect(screen.getByTestId("flow-label-1")).toHaveTextContent("beta back");
+  expect(document.querySelector(".react-flow__viewport-portal").contains(screen.getByTestId("flow-label-0"))).toBe(true);
+  expect(document.querySelectorAll(".flow-label--on").length).toBe(0); // nothing marked before Simulate
+  await user.click(screen.getByRole("button", { name: "Simulate" }));
+  const on = document.querySelectorAll(".flow-label--on");
+  expect(on.length).toBe(1);
+  expect(on[0]).toBe(screen.getByTestId("flow-label-0")); // step 1 walks arrow 0
+  expect(on[0].style.zIndex).toBe("3"); expect(screen.getByTestId("flow-label-1").style.zIndex).toBe("1");
+  await user.click(screen.getByRole("button", { name: "Reset" }));
+  expect(document.querySelectorAll(".flow-label--on").length).toBe(0);
+});
+
+test("the real routes draw every label they have, and an arrow without text draws none", async () => {
+  fakeApi({ handlers: serve(DIAGRAM_DOCS) });
+  mount();
+  await screen.findByTestId("flow-label-0");
+  expect(screen.getAllByTestId(/^flow-label-/).length).toBe(DIAGRAM_DOCS["route-a"].edges.filter((e) => e.label).length);
+  cleanup();
+  const bare = doc("bare", "Bare", 300); delete bare.edges[1].label;
+  fakeApi({ handlers: serve({ bare }) });
+  mount();
+  await screen.findByTestId("flow-label-0");
+  expect(screen.queryByTestId("flow-label-1")).toBeNull();
+});
