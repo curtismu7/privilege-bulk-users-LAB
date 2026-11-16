@@ -180,6 +180,31 @@ try {
   check(lab.pairs === 0 && lab.onBox === 0, `no label overlaps another label or a box (${lab.pairs} overlaps, ${lab.onBox} on a box)`);
   await axe('the Diagram page while an arrow is walked');
   await page.locator('.controls').getByRole('button', { name: 'Reset' }).click();
+  // A box expands in place: click it and its details appear below its title, inside the box, on top; click it again and it collapses;
+  // a #/diagram/<route>/<box> link opens that route with the box expanded. axe stays clean with a box expanded.
+  await page.locator('[data-testid=box-app] strong').click();
+  await page.waitForSelector('.fbox[data-open] .passport');
+  await page.waitForTimeout(600); // the view eases to the expanded box
+  const px = await page.evaluate(() => {
+    const open = document.querySelector('.fbox[data-open]'); const t = open.querySelector('strong').getBoundingClientRect(); const p = open.querySelector('.passport').getBoundingClientRect(); const b = open.getBoundingClientRect();
+    const top = document.elementFromPoint(p.x + p.width / 2, p.y + p.height / 2);
+    const hit = (a, c) => a.x < c.right && c.x < a.right && a.y < c.bottom && c.y < a.bottom;
+    const ls = [...document.querySelectorAll('.flow-label')].map((l) => l.getBoundingClientRect()); let pairs = 0; for (let i = 0; i < ls.length; i++) for (let j = i + 1; j < ls.length; j++) if (hit(ls[i], ls[j])) pairs++;
+    return { count: document.querySelectorAll('.passport').length, below: p.top >= t.bottom - 1 && p.bottom <= b.bottom + 1, onTop: !!top && !!top.closest('.passport'), text: open.querySelector('.passport').innerText, links: [...open.querySelectorAll('.passport a')].map((a) => a.getAttribute('href')), pairs };
+  });
+  check(px.count === 1 && px.below && px.onTop, 'clicking a box expands it in place: details below its title, inside the box, on top');
+  const inView = await page.evaluate(() => { const c = document.querySelector('.flow-wrap').getBoundingClientRect(); const b = document.querySelector('.fbox[data-open]').getBoundingClientRect(); return b.top >= c.top - 1 && b.bottom <= c.bottom + 1 && b.left >= c.left - 1 && b.right <= c.right + 1; });
+  check(inView, 'the expanded box is brought fully into view, nothing cut off by the canvas edge');
+  check(/upstream \d+ · downstream \d+/i.test(px.text) && /outgoing · \d+/i.test(px.text) && /incoming · \d+/i.test(px.text), 'the details show reach, outgoing and incoming');
+  check(px.links.length === 3 && px.links.every((h) => /^https:\/\/github\.com\/curtismu7\/privilege-bulk-users-LAB\/blob\/[0-9a-f]{40}\/server\/src\/[A-Za-z]+\.js#L\d+-L\d+$/.test(h)), `the box lists its three code pointers as links to the pinned commit (${px.links.length} links)`);
+  check(px.pairs === 0, `with a box expanded no two labels overlap (${px.pairs} overlaps)`);
+  await axe('the Diagram page with a box expanded');
+  await page.locator('[data-testid=box-app] strong').click();
+  check(await page.locator('.fbox[data-open]').count() === 0, 'clicking the open box again collapses it');
+  const linked = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+  await linked.goto(`${base}/#/diagram/route-b/app`, { waitUntil: 'networkidle' }); await linked.waitForSelector('.fbox[data-open]');
+  check(await linked.locator('[data-testid=box-app][data-open]').count() === 1 && /Route B/.test(await linked.locator('.controls select').first().evaluate((el) => el.options[el.selectedIndex].text)), 'a #/diagram/<route>/<box> link opens that route with that box expanded');
+  await linked.close();
   await page.goto(`${base}/#/help`, { waitUntil: 'networkidle' });
   await t('help-page').waitFor();
   await axe('the Help page');

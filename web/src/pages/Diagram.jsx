@@ -1,10 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Background, BaseEdge, Controls, Handle, MarkerType, Position, ReactFlow, ViewportPortal, applyNodeChanges, getBezierPath, useStore } from "@xyflow/react";
+import { Background, BaseEdge, Controls, Handle, MarkerType, Position, ReactFlow, ViewportPortal, applyNodeChanges, getBezierPath, useReactFlow, useStore } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { get } from "../api.js";
 import { usePresent } from "../present/Present.jsx";
 import { sourceHref, sourceLabel } from "../lib/sources.js";
 import { placeLabels, slotPoint } from "../lib/labelPlacement.js";
+import { boxPassport } from "../lib/passport.js";
+import Passport, { PassportActions } from "../components/Passport.jsx";
 
 // The two routes (route-a, route-b). The picture is diagram-studio/1 DATA (server/diagrams/*.json) fetched by name from /api/diagrams/:name
 // (rule 17): nothing in this file lists a box or an arrow. Boxes drag; Simulate walks one run, Reset restores positions and state, the speed
@@ -36,12 +38,13 @@ export function flowEdges(doc, active, animate) {
 
 function Box({ data }) {
   return (
-    <div className="fbox" data-state={data.on ? "on" : data.dim ? "dim" : undefined}>
+    <div className="fbox" data-state={data.on ? "on" : data.dim ? "dim" : undefined} data-open={data.passport ? "1" : undefined} data-testid={`box-${data.id}`}>
       {SIDES.flatMap(([s, pos]) => [1, 2].flatMap((n) => {
         const style = pos === Position.Left || pos === Position.Right ? { top: n === 1 ? "30%" : "70%" } : { left: n === 1 ? "30%" : "70%" };
         return [<Handle key={`${s}${n}t`} id={`${s}${n}`} type="target" position={pos} style={style} />, <Handle key={`${s}${n}s`} id={`${s}${n}`} type="source" position={pos} style={style} />];
       }))}
       <strong>{data.title}</strong>{data.sub.map((line, i) => <span key={i}>{line}</span>)}
+      {data.passport && <Passport p={data.passport} />}
     </div>
   );
 }
@@ -58,6 +61,20 @@ const edgeTypes = { arrow: Arrow };
 // size the page draws it at (220px wide); the measured size replaces that a moment later.
 const boxesOf = (s) => [...s.nodeLookup.values()].map((n) => ({ id: n.id, x: n.internals.positionAbsolute.x, y: n.internals.positionAbsolute.y, w: n.measured?.width ?? 220, h: n.measured?.height ?? 64 }));
 const sameBoxes = (a, b) => a.length === b.length && a.every((n, i) => n.id === b[i].id && n.x === b[i].x && n.y === b[i].y && n.w === b[i].w && n.h === b[i].h);
+
+// An expanded box is brought fully into view (zoomed in, up to 100%, so its details are readable); collapsing it fits the whole diagram again.
+// A child of ReactFlow, because the view is reached through React Flow's own hook.
+function FitOpen({ open }) {
+  const rf = useReactFlow();
+  const was = useRef(null);
+  useEffect(() => {
+    const before = was.current; was.current = open;
+    if (!open && !before) return undefined;
+    const t = setTimeout(() => rf.fitView(open ? { nodes: [{ id: open }], padding: 0.2, maxZoom: 1, duration: 250 } : { padding: 0.12, duration: 250 }), 120); // after the box has been re-measured
+    return () => clearTimeout(t);
+  }, [open, rf]);
+  return null;
+}
 
 // Every arrow's label, in a layer above the boxes (React Flow's ViewportPortal), each on the first spot along its own arrow that
 // touches no other label and no box (lib/labelPlacement.js). The label of the arrow being walked turns accent-coloured and bold
@@ -101,6 +118,9 @@ function Labels({ edges, present }) {
   );
 }
 
+// A shared link is #/diagram/<route>/<box>: it opens that route with that box expanded (anything else in it is ignored).
+const linkParts = () => { const [, , route = "", box = ""] = window.location.hash.replace(/^#/, "").split("/").map((x) => { try { return decodeURIComponent(x); } catch { return ""; } }); return { route, box }; };
+
 export default function Diagram({ theme = "system" }) {
   const { present } = usePresent();
   const [names, setNames] = useState(null); // [{ name, title }] from GET /api/diagrams
@@ -112,13 +132,16 @@ export default function Diagram({ theme = "system" }) {
   const [step, setStep] = useState(-1);
   const [flowKey, setFlowKey] = useState(0);
   const [running, setRunning] = useState(false);
+  const [open, setOpen] = useState(null);       // the id of the expanded box, or null
+  const wantBox = useRef(linkParts().box);       // a box from a shared link, expanded once its route has loaded
 
   useEffect(() => {
     let live = true; // a late answer after the page is left is dropped
     get("/api/diagrams").then((r) => {
       if (!live) return;
       if (!r.ok || !Array.isArray(r.json?.diagrams) || !r.json.diagrams.length) { setError("the diagram list did not load"); return; }
-      setNames(r.json.diagrams); setScenario(r.json.diagrams[0].name);
+      const asked = linkParts().route;
+      setNames(r.json.diagrams); setScenario(r.json.diagrams.some((d) => d.name === asked) ? asked : r.json.diagrams[0].name);
     });
     return () => { live = false; };
   }, []);
@@ -129,11 +152,23 @@ export default function Diagram({ theme = "system" }) {
       if (!live) return;
       if (!r.ok || !Array.isArray(r.json?.nodes)) { setError("the diagram did not load"); return; }
       setError(null); setDoc(r.json);
-      // Boxes the visitor has moved stay where they are when the route changes (a box in both routes keeps its place).
+      setOpen(wantBox.current && r.json.nodes.some((n) => n.id === wantBox.current) ? wantBox.current : null); wantBox.current = ""; // a link's box is used once; a different route has no such box      // Boxes the visitor has moved stay where they are when the route changes (a box in both routes keeps its place).
       setMoved((prev) => starts(r.json).map((n) => prev.find((p) => p.id === n.id) || n));
     });
     return () => { live = false; };
   }, [scenario]);
+
+  // A shared link followed while this page is already showing (only the hash changes): switch to its route, and expand its box.
+  useEffect(() => {
+    const follow = () => {
+      const { route, box } = linkParts();
+      if (!route || !names?.some((d) => d.name === route)) return;
+      if (route !== scenario) { wantBox.current = box; setScenario(route); setRunning(false); setStep(-1); setOpen(null); }
+      else if (box && doc?.nodes.some((n) => n.id === box)) setOpen(box);
+    };
+    window.addEventListener("hashchange", follow);
+    return () => window.removeEventListener("hashchange", follow);
+  }, [names, scenario, doc]);
 
   const steps = doc?.steps ?? [];
   useEffect(() => {
@@ -145,7 +180,7 @@ export default function Diagram({ theme = "system" }) {
   const ready = !!doc && doc.id === scenario;
   const simulate = () => { setStep(0); setRunning(true); };
   const reset = () => { setRunning(false); setStep(-1); if (doc) setMoved(starts(doc)); setFlowKey((k) => k + 1); }; // remount: positions AND pan/zoom back to the initial fit
-  const pick = (s) => { setScenario(s); setRunning(false); setStep(-1); };
+  const pick = (s) => { setScenario(s); setRunning(false); setStep(-1); setOpen(null); };
   const onNodesChange = useCallback((c) => setMoved((n) => applyNodeChanges(c, n)), []);
   const cur = step >= 0 && steps[step] ? steps[step] : null;
   const curEdges = useMemo(() => new Set((cur?.edges ?? []).map((i) => `e${i}`)), [cur]);
@@ -155,10 +190,15 @@ export default function Diagram({ theme = "system" }) {
     const by = new Map(doc.nodes.map((n) => [n.id, n]));
     return moved.filter((m) => by.has(m.id)).map((m) => {
       const n = by.get(m.id);
-      return { ...m, type: "box", data: { title: n.label, sub: n.sub ?? [], on: curNodes.has(m.id), dim: !!cur && !curNodes.has(m.id) } };
+      return { ...m, type: "box", zIndex: m.id === open ? 10 : undefined, data: { id: m.id, title: n.label, sub: n.sub ?? [], on: curNodes.has(m.id), dim: !!cur && !curNodes.has(m.id), passport: m.id === open ? boxPassport(doc, m.id) : null } };
     });
-  }, [doc, moved, cur, curNodes]);
+  }, [doc, moved, cur, curNodes, open]);
   const edges = useMemo(() => (doc ? flowEdges(doc, curEdges, !reduced()) : []), [doc, curEdges]);
+  // What an expanded box can do: open the box at the far end of an arrow, close itself, and make a link that opens this route with it expanded.
+  const actions = useMemo(() => ({
+    open: (id) => setOpen(id), close: () => setOpen(null),
+    link: (id) => { const u = new URL(window.location.href); u.search = ""; u.hash = `/diagram/${encodeURIComponent(scenario)}/${encodeURIComponent(id)}`; return u.toString(); },
+  }), [scenario]);
   const cited = useMemo(() => (doc ? doc.nodes.filter((n) => Array.isArray(n.sources) && n.sources.length) : []), [doc]);
   return (
     <>
@@ -173,9 +213,11 @@ export default function Diagram({ theme = "system" }) {
       {error && <p className="err-text" role="alert">Could not load the diagram ({error}).</p>}
       <div className="flow-wrap" role="group" aria-label="Diagram of the chosen route: this page, this lab, PingOne or the Privilege console API. Boxes can be dragged.">
         {doc && (
-          <ReactFlow key={flowKey} nodes={nodes} edges={edges} nodeTypes={nodeTypes} edgeTypes={edgeTypes} onNodesChange={onNodesChange} colorMode={theme} fitView fitViewOptions={{ padding: 0.12 }} nodesConnectable={false} proOptions={{ hideAttribution: true }} minZoom={0.2}>
-            <Background /><Controls showInteractive={false} /><Labels edges={edges} present={present} />
+          <PassportActions.Provider value={actions}>
+          <ReactFlow key={flowKey} nodes={nodes} edges={edges} nodeTypes={nodeTypes} edgeTypes={edgeTypes} onNodesChange={onNodesChange} onNodeClick={(_, n) => setOpen((o) => (o === n.id ? null : n.id))} onPaneClick={() => setOpen(null)} colorMode={theme} fitView fitViewOptions={{ padding: 0.12 }} nodesConnectable={false} proOptions={{ hideAttribution: true }} minZoom={0.2}>
+            <Background /><Controls showInteractive={false} /><Labels edges={edges} present={present} /><FitOpen open={open} />
           </ReactFlow>
+          </PassportActions.Provider>
         )}
       </div>
       <p className="caption" role="status" aria-live="polite" data-testid="caption">{cur ? `Step ${step + 1} of ${steps.length}: ${cur.what}` : "Press Simulate to walk one run through the diagram."}</p>
