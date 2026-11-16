@@ -3,6 +3,10 @@
   "id": "route-b",
   "title": "Route B: create user records with the Privilege console API",
   "lede": "The literal register-a-user call: POST /api/{tenant}/v1/users, one record per person, with the console's key and secret. Write-gated and UNVERIFIED against a real console. Simulated in Mock.",
+  "repo": {
+    "url": "https://github.com/curtismu7/privilege-bulk-users-LAB",
+    "rev": "53113c1c1c11fbbf05499a60ac33761708684bf4"
+  },
   "groups": {
     "client": {
       "label": "Your side",
@@ -36,7 +40,27 @@
         "Holds the console secret (write-only). Same bounded pool and back-off as Route A."
       ],
       "x": 440,
-      "y": 150
+      "y": 150,
+      "sources": [
+        {
+          "path": "server/src/routeB.js",
+          "line": 9,
+          "end_line": 43,
+          "label": "planB"
+        },
+        {
+          "path": "server/src/routeB.js",
+          "line": 45,
+          "end_line": 53,
+          "label": "applyB"
+        },
+        {
+          "path": "server/src/console.js",
+          "line": 33,
+          "end_line": 59,
+          "label": "console client"
+        }
+      ]
     },
     {
       "id": "console",
