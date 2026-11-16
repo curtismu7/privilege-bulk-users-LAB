@@ -1,6 +1,7 @@
 # Changelog
 
 ## Unreleased: rule 24 and the review nits
+- Diagram page: a "Where this is in the code" card under the picture lists the code pointers (`sources`) of the chosen route, as links to the file at the commit the diagram pins when `repo` is a GitHub https URL, plain text otherwise. `web/src/lib/sources.js` is a copy of diagram-studio-LAB's `core/src/sources.js`.
 - Code pointers on the diagrams: the "This lab" box of each route carries `sources` (the plan, apply and request-path code, with line ranges) and the diagram pins the commit with `repo`. A test checks every cited file and line range still exists (working tree; code that moved within a file is not noticed). Validator re-copied from diagram-studio-LAB PR #13.
 
 - **This lab's Verified / In progress mark in the header.** The shared `VerifyMark` (vendored from AI-DEMO-Standalone `shared/verify-mark`, byte for byte, pinned with its stylesheet) shows the mark the demo shelf holds for `privilege-bulk-users`, inside the top menu beside the Mode chip (this lab has no separate `ShelfLink` in its header: the Shelf button is the top menu's own). It reads the same `GET /api/shelf` call the Shelf button makes, so it shows through the lab-proxy and nothing when the lab is opened on its own port, when the shelf has no mark for it, or when the shelf is unreachable. Two web tests pin the vendored files and the badge (own id only).

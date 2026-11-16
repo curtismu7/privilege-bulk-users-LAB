@@ -133,3 +133,58 @@ test("the two real routes are drawn from the server's files: one box per node, t
   for (const n of b.nodes) expect(screen.getByText(n.label)).toBeInTheDocument();
   expect(state.calls.map((c) => c.url)).toEqual(["/api/diagrams", "/api/diagrams/route-a", "/api/diagrams/route-b"]);
 });
+
+// Code pointers: the boxes may carry `sources` (and the diagram a pinned `repo`); the page lists them under the diagram.
+const REV = "c".repeat(40);
+const withSources = (repo) => {
+  const d = doc("one", "Model one", 300);
+  d.nodes[0].sources = [{ path: "server/src/jobs.js", line: 88, end_line: 97, label: "apply gate" }, { path: "server/src/http.js", line: 60 }];
+  if (repo) d.repo = repo;
+  return d;
+};
+
+test("a box's code pointers are listed under the diagram, as links to the pinned commit when the diagram names a GitHub repo", async () => {
+  fakeApi({ handlers: serve({ one: withSources({ url: "https://github.com/o/r.git", rev: REV }) }) });
+  mount();
+  const card = await screen.findByTestId("diagram-sources");
+  expect(card).toHaveTextContent("Alpha box: apply gate, server/src/jobs.js:88-97");
+  expect(card).toHaveTextContent("Alpha box: server/src/http.js:60");
+  expect(card).toHaveTextContent(`Read at commit ${REV.slice(0, 7)}`);
+  expect(card).toHaveTextContent(/cannot tell when the code has moved/);
+  const links = [...card.querySelectorAll("a")];
+  expect(links.map((a) => a.getAttribute("href"))).toEqual([`https://github.com/o/r/blob/${REV}/server/src/jobs.js#L88-L97`, `https://github.com/o/r/blob/${REV}/server/src/http.js#L60`]);
+  for (const a of links) expect(a.getAttribute("rel")).toBe("noopener noreferrer");
+});
+
+test("code pointers are plain text, never links, when the diagram has no repo or a repo that is not a GitHub https URL", async () => {
+  for (const repo of [undefined, { url: "https://gitlab.com/o/r", rev: REV }, { url: "javascript:alert(1)", rev: REV }, { url: "https://github.com/o/r", rev: "abc" }]) {
+    fakeApi({ handlers: serve({ one: withSources(repo) }) });
+    const { unmount } = mount();
+    const card = await screen.findByTestId("diagram-sources");
+    expect(card.querySelectorAll("a").length).toBe(0);
+    expect(card).toHaveTextContent("server/src/jobs.js:88-97");
+    unmount();
+  }
+});
+
+test("no code-pointer card when no box carries sources", async () => {
+  fakeApi({ handlers: serve({ one: doc("one", "Model one", 300) }) });
+  mount();
+  await screen.findByText("Alpha box");
+  expect(screen.queryByTestId("diagram-sources")).toBeNull();
+});
+
+test("the real route-a and route-b files show their three code pointers, each linked to the commit the diagram pins", async () => {
+  fakeApi({ handlers: serve(DIAGRAM_DOCS) });
+  const user = userEvent.setup();
+  mount();
+  for (const name of ["route-a", "route-b"]) {
+    if (name === "route-b") await user.selectOptions(screen.getByLabelText("Route"), "route-b");
+    await waitFor(() => expect(screen.getByLabelText("Route")).toHaveValue(name));
+    const rev = DIAGRAM_DOCS[name].repo.rev;
+    await waitFor(() => expect([...screen.getByTestId("diagram-sources").querySelectorAll("a")].length).toBe(3));
+    const hrefs = [...screen.getByTestId("diagram-sources").querySelectorAll("a")].map((a) => a.getAttribute("href"));
+    for (const h of hrefs) expect(h).toMatch(new RegExp(`^https://github\\.com/curtismu7/privilege-bulk-users-LAB/blob/${rev}/server/src/[A-Za-z]+\\.js#L\\d+-L\\d+$`));
+    expect(screen.getByTestId("diagram-sources")).toHaveTextContent(`Read at commit ${rev.slice(0, 7)}`);
+  }
+});
