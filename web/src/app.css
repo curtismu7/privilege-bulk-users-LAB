@@ -31,7 +31,7 @@ a { color: var(--focus); }
 }
 
 /* Page frame (P3): one centred column; the banner is the first thing in it. */
-.page { max-width: 1100px; margin: 0 auto; padding: 0.5rem 0 3rem; }
+.page { max-width: 2200px; margin: 0 auto; padding: 0.5rem 0 3rem; }
 .foot { max-width: 1100px; margin: 0 auto; padding: 1rem 0 2rem; color: var(--muted); font-size: 0.8125rem; }
 
 h1 { margin: 1rem 0 0.5rem; font-size: 1.5rem; }
