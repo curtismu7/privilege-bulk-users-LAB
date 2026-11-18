@@ -9,6 +9,8 @@ import Help from "./pages/Help.jsx";
 import Run from "./pages/Run.jsx";
 import { PresentBar, PresentProvider, usePresent } from "./present/Present.jsx";
 import TopMenu, { applyFontSize } from "./top-menu/TopMenu.jsx";
+import TalkTrackDialog from "./talk-track/TalkTrackDialog.jsx";
+import talkMd from "../../docs/talk-track.md?raw";
 import VerifyMark from "./components/VerifyMark.jsx";
 
 // The family launcher address, used only when this server has no shelf URL of its own (GET /api/shelf answers null).
@@ -29,6 +31,15 @@ export default function App() {
 function Shell() {
   const { present, set: setPresent } = usePresent();
   const [fontStep, setFontStep] = useState(() => { const f = store.get("pbu.font"); return ["S", "M", "L"].includes(f) ? f : "M"; });
+  const [talkOpen, setTalkOpen] = useState(false);
+  const talkSteps = (() => {
+    const steps = []; let n = 0;
+    for (const line of talkMd.split("\n")) {
+      const m = line.match(/^\d+\.\s+(?:"(.+?)"|\*\*(.+?)\.\*\*\s*(.*))$/);
+      if (m) { n += 1; steps.push({ id: `s${n}`, title: (m[1] || m[2]).slice(0, 60), say: m[1] || m[3] }); }
+    }
+    return steps.length ? steps : [{ id: "s1", title: "Talk track", say: talkMd.slice(0, 600) }];
+  })();
   useEffect(() => { applyFontSize(fontStep); store.set("pbu.font", fontStep); }, [fontStep]);
   const [route, setRoute] = useState(parseHash);
   const [theme, setTheme] = useState(() => { const t = store.get("pbu.theme"); return ["auto", "light", "dark"].includes(t) ? t : "auto"; });
@@ -107,6 +118,7 @@ function Shell() {
           theme={{ value: theme, onChange: setTheme }}
           fontSize={{ value: fontStep, onChange: setFontStep }}
           present={{ active: present, onToggle: () => setPresent(!present) }}
+          talkTrack={{ active: talkOpen, onToggle: () => setTalkOpen((v) => !v) }}
           shelfUrl={shelfUrl}
           help={{ href: "#/help", onClick: (e) => { e.preventDefault(); window.location.hash = "#/help"; } }}
           onReset={reset}
@@ -122,6 +134,8 @@ function Shell() {
         <div key={epoch}>
           <ErrorBoundary resetKey={route.page} testId="page-crash" message="This page could not be drawn, so nothing is shown here. The header, the banner and the other pages still work, and Reset starts everything over.">{page}</ErrorBoundary>
         </div>
+      <TalkTrackDialog isOpen={talkOpen} onClose={() => setTalkOpen(false)} talk={talkSteps} />
+
       </main>
       <p className="visually-hidden" role="status" aria-live="polite" data-testid="live">{msg}</p>
       <footer className="foot">This app runs on your machine and has no accounts. Settings and secrets live in this lab's own .env and are never sent to the page. Product claims are marked UNVERIFIED where we have not verified them (see the Guide and Help).</footer>
