@@ -99,11 +99,11 @@ const SHOW = {
 
 const Json = ({ id, value, label }) => <div className="json-pane"><JsonPane value={value} label={label} testId={`json-${id}`} /></div>;
 
-function Section({ id, kicker, title, children }) {
+function Section({ id, n, kicker, title, children }) {
   return (
     <section className="guide-section" aria-labelledby={`g-${id}`} data-testid={`section-${id}`}>
       <p className="section-label">{kicker}</p>
-      <h2 id={`g-${id}`}>{title}</h2>
+      <h2 id={`g-${id}`}><span className="step-num" data-n={n} aria-hidden="true"></span>{title}</h2>
       {children}
     </section>
   );
@@ -141,7 +141,7 @@ export default function Guide() {
       <h1>Register users for Privilege with APIs</h1>
       <p className="lede">No large company registers people one console click at a time. This page shows how to register many people for PingOne Privilege with API calls, step by step, and then lets you run the whole thing against a simulation. The commands use <code>$PLACEHOLDER</code> variables: fill them from your own environment, never paste real ids into a page like this one.</p>
 
-      <Section id="why" kicker="1 · Why not by hand" title="One click per person does not scale">
+      <Section id="why" n={1} kicker="1 · Why not by hand" title="One click per person does not scale">
         <p>Adding people one at a time in the console is fine for ten. At a few thousand nobody can say afterwards who was done and who was skipped, and a second run is a second round of the same clicks. A large company needs four things.</p>
         <div className="card-grid">
           <div className="card"><h3>Repeatable</h3><p>The same input gives the same outcome. Run it on Monday and again on Friday.</p></div>
@@ -151,7 +151,7 @@ export default function Guide() {
         </div>
       </Section>
 
-      <Section id="model" kicker="2 · How Privilege knows a user" title="Its own PingOne environment, and one group">
+      <Section id="model" n={2} kicker="2 · How Privilege knows a user" title="Its own PingOne environment, and one group">
         <dl className="kv">
           <dt>Privilege's environment</dt><dd>Privilege only knows the users of its own PingOne environment who are members of the Privilege group.</dd>
           <dt>The Privilege group</dt><dd>Being in the environment is not enough: only members of the group count.</dd>
@@ -163,7 +163,7 @@ export default function Guide() {
         <p className="source">Source: a sync script we run ourselves, in daily use, and our SE setup guide for Privilege. The token-claims option, and its place in OBO, is the owner's statement of 2026-11-15; how it is set up is UNVERIFIED (see the end of this page).</p>
       </Section>
 
-      <Section id="routes" kicker="3 · Two routes" title="Which API do you call?">
+      <Section id="routes" n={3} kicker="3 · Two routes" title="Which API do you call?">
         <div className="scroll">
           <table className="stack-table" data-testid="routes-table">
             <thead><tr><th scope="col">Route</th><th scope="col">What it calls</th><th scope="col">Evidence</th><th scope="col">Use it when</th></tr></thead>
@@ -185,7 +185,7 @@ export default function Guide() {
         </div>
       </Section>
 
-      <Section id="route-a" kicker="4 · Route A, step by step" title="Register people through the PingOne API">
+      <Section id="route-a" n={4} kicker="4 · Route A, step by step" title="Register people through the PingOne API">
         <p>Step 0 is the setup; steps 1 to 7 are the calls, from a token to proof. Each shows the request as a curl command and a shortened example of the answer. Copy a command, fill the variables, run it.</p>
         <details className="placeholders" data-testid="placeholders">
           <summary>Placeholders used on this page</summary>
@@ -243,7 +243,7 @@ export default function Guide() {
         <p className="source">Source: steps 0 to 6 follow a sync script we run ourselves, in daily use, and a second script for the group call. The snapshot design, the choice of 100 a page and treating a 409 on the group add as success are this lab's own design.</p>
       </Section>
 
-      <Section id="scale" kicker="5 · Doing it at scale" title="What a bulk run needs, and where you see it">
+      <Section id="scale" n={5} kicker="5 · Doing it at scale" title="What a bulk run needs, and where you see it">
         <p>None of this is exotic. The Run page shows each practice as a number you can watch.</p>
         <div className="scroll">
           <table className="stack-table" data-testid="scale-table">
@@ -256,7 +256,7 @@ export default function Guide() {
         <p className="hint">How many calls PingOne allows is UNVERIFIED: this lab finds the limit by being told 429, and does not know the numbers.</p>
       </Section>
 
-      <Section id="route-b" kicker="6 · Route B" title="Create user records with the Privilege console API">
+      <Section id="route-b" n={6} kicker="6 · Route B" title="Create user records with the Privilege console API">
         <p><Chip tone="warn">UNVERIFIED against a real console</Chip> The console's swagger has <code>GET</code> and <code>POST /api/{"{tenant}"}/v1/users</code>. A user is an object with <code>ObjectMeta</code> and <code>Spec</code>, and the three headers below authenticate the call.</p>
         <dl className="kv">
           <dt><code>x-api-key</code></dt><dd>The console user API key.</dd>
@@ -272,12 +272,12 @@ export default function Guide() {
         <p className="source">Source: the console's swagger (baseline 2026-11-02), and a sibling lab that ran <code>GET users</code> against a local desktop console and got 200. The swagger has no endpoint that generates an onboarding link and no inbound SCIM server.</p>
       </Section>
 
-      <Section id="try" kicker="7 · Try it" title="Run both routes without touching a real tenant">
+      <Section id="try" n={7} kicker="7 · Try it" title="Run both routes without touching a real tenant">
         <p>Mock simulates PingOne and the Privilege console with made-up people on <code>.example</code> addresses, and plays six situations: realistic, clean, rate-limited, flaky, conflicts and a worker with a missing role. Nothing leaves this machine.</p>
         <p><a className="cta" href="#/run" data-testid="try-it">Open the Run page</a></p>
       </Section>
 
-      <Section id="unverified" kicker="8 · What we have not verified" title="Read this before you rely on it">
+      <Section id="unverified" n={8} kicker="8 · What we have not verified" title="Read this before you rely on it">
         <ul data-testid="unverified-list">
           {UNVERIFIED.map((text) => <li key={text}>{withCode(text)}</li>)}
         </ul>

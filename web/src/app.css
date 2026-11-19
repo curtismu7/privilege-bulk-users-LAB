@@ -45,6 +45,10 @@ code { font-size: 0.85em; overflow-wrap: anywhere; }
 .section-label { margin: 0 0 0.25rem; color: var(--muted); font-size: 0.75rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
 .guide-section { margin: 2.25rem 0 0; }
 .guide-section p, .guide-section ul > li { max-width: 80ch; }
+/* Numbered step badge next to section kickers/headings. */
+.step-num { display: inline-grid; place-items: center; min-width: 1.4rem; height: 1.4rem; border-radius: 999px;
+  background: var(--accent-gradient); color: var(--on-accent); font: 700 0.75rem var(--font-mono); margin-right: 0.5em; vertical-align: 2px; }
+.step-num::before { content: attr(data-n); }
 
 /* Notices and chips: a tone from the semantic tokens, always with words. */
 .notice { margin: 0.6rem 0; padding: 0.6rem 0.9rem; border: 1px solid var(--border); border-left: 4px solid var(--status-info); border-radius: 8px; background: var(--surface-2); color: var(--text); font-size: 0.8125rem; }
@@ -62,7 +66,7 @@ code { font-size: 0.85em; overflow-wrap: anywhere; }
 /* Cards: bordered, accent top edge. */
 .card { min-width: 0; margin: 1rem 0; padding: 1rem 1.1rem; border: 1px solid var(--border); border-top: 4px solid var(--accent); border-radius: 10px; background: var(--surface); }
 .card p { margin: 0.35rem 0; }
-.card-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr)); gap: 0.75rem; margin: 1rem 0; }
+.card-grid { display: grid; grid-template-columns: 1fr; gap: 0.75rem; margin: 1rem 0; }
 .card-grid .card { margin: 0; }
 .card-grid .card p { font-size: 0.85rem; }
 .kv { display: grid; grid-template-columns: minmax(9rem, max-content) minmax(0, 1fr); gap: 0.3rem 1rem; margin: 0.6rem 0 0; font-size: 0.85rem; }
