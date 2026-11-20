@@ -162,16 +162,16 @@ try {
   await axe('the Diagram page');
   // Arrow labels: drawn above the boxes (none left as SVG text under them), the walked arrow's label is marked and raised, and no label
   // overlaps another label or sits on a box.
-  await page.waitForSelector('.flow-label');
+  await page.waitForSelector('.dk-label');
   await page.locator('.controls select').nth(1).selectOption('0.5'); // slow, so a loaded machine cannot tick past the step under test
   await page.getByRole('button', { name: 'Simulate' }).click();
-  await page.waitForSelector('.flow-label--on');
+  await page.waitForSelector('.dk-label--on');
   const lab = await page.evaluate(() => {
-    const els = [...document.querySelectorAll('.flow-label')]; const rects = els.map((l) => l.getBoundingClientRect());
+    const els = [...document.querySelectorAll('.dk-label')]; const rects = els.map((l) => l.getBoundingClientRect());
     const boxes = [...document.querySelectorAll('.react-flow__node')].map((n) => n.getBoundingClientRect());
     const hit = (a, b) => a.x < b.right && b.x < a.right && a.y < b.bottom && b.y < a.bottom;
     let pairs = 0; for (let i = 0; i < rects.length; i++) for (let j = i + 1; j < rects.length; j++) if (hit(rects[i], rects[j])) pairs++;
-    const hot = els.filter((l) => l.classList.contains('flow-label--on')); const other = els.find((l) => !l.classList.contains('flow-label--on'));
+    const hot = els.filter((l) => l.classList.contains('dk-label--on')); const other = els.find((l) => !l.classList.contains('dk-label--on'));
     return { n: els.length, svg: document.querySelectorAll('.react-flow__edge-text').length, pairs, onBox: rects.filter((r) => boxes.some((b) => hit(r, b))).length, hot: hot.length, hotColour: hot[0] && getComputedStyle(hot[0]).color, otherColour: other && getComputedStyle(other).color, hotZ: hot[0] && getComputedStyle(hot[0]).zIndex, otherZ: other && getComputedStyle(other).zIndex };
   });
   check(lab.n >= 5 && lab.svg === 0, `arrow labels are drawn above the boxes, none left as SVG text (${lab.n} labels, ${lab.svg} SVG)`);
@@ -183,14 +183,14 @@ try {
   // A box expands in place: click it and its details appear below its title, inside the box, on top; click it again and it collapses;
   // a #/diagram/<route>/<box> link opens that route with the box expanded. axe stays clean with a box expanded.
   await page.locator('[data-testid=box-app] strong').click();
-  await page.waitForSelector('.fbox[data-open] .passport');
+  await page.waitForSelector('.fbox[data-open] .dk-passport');
   await page.waitForTimeout(600); // the view eases to the expanded box
   const px = await page.evaluate(() => {
-    const open = document.querySelector('.fbox[data-open]'); const t = open.querySelector('strong').getBoundingClientRect(); const p = open.querySelector('.passport').getBoundingClientRect(); const b = open.getBoundingClientRect();
+    const open = document.querySelector('.fbox[data-open]'); const t = open.querySelector('strong').getBoundingClientRect(); const p = open.querySelector('.dk-passport').getBoundingClientRect(); const b = open.getBoundingClientRect();
     const top = document.elementFromPoint(p.x + p.width / 2, p.y + p.height / 2);
     const hit = (a, c) => a.x < c.right && c.x < a.right && a.y < c.bottom && c.y < a.bottom;
-    const ls = [...document.querySelectorAll('.flow-label')].map((l) => l.getBoundingClientRect()); let pairs = 0; for (let i = 0; i < ls.length; i++) for (let j = i + 1; j < ls.length; j++) if (hit(ls[i], ls[j])) pairs++;
-    return { count: document.querySelectorAll('.passport').length, below: p.top >= t.bottom - 1 && p.bottom <= b.bottom + 1, onTop: !!top && !!top.closest('.passport'), text: open.querySelector('.passport').innerText, links: [...open.querySelectorAll('.passport a')].map((a) => a.getAttribute('href')), pairs };
+    const ls = [...document.querySelectorAll('.dk-label')].map((l) => l.getBoundingClientRect()); let pairs = 0; for (let i = 0; i < ls.length; i++) for (let j = i + 1; j < ls.length; j++) if (hit(ls[i], ls[j])) pairs++;
+    return { count: document.querySelectorAll('.dk-passport').length, below: p.top >= t.bottom - 1 && p.bottom <= b.bottom + 1, onTop: !!top && !!top.closest('.dk-passport'), text: open.querySelector('.dk-passport').innerText, links: [...open.querySelectorAll('.dk-passport a')].map((a) => a.getAttribute('href')), pairs };
   });
   check(px.count === 1 && px.below && px.onTop, 'clicking a box expands it in place: details below its title, inside the box, on top');
   const inView = await page.evaluate(() => { const c = document.querySelector('.flow-wrap').getBoundingClientRect(); const b = document.querySelector('.fbox[data-open]').getBoundingClientRect(); return b.top >= c.top - 1 && b.bottom <= c.bottom + 1 && b.left >= c.left - 1 && b.right <= c.right + 1; });

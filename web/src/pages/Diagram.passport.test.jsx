@@ -38,14 +38,14 @@ test("nothing is expanded at first; clicking a box expands it in place with its 
   expect(open()).toEqual([]);
   fireEvent.click(alpha);
   expect(open()).toEqual(["box-alpha"]);
-  const p = within(alpha).getByTestId("passport-alpha"); // inside that box
+  const p = within(alpha).getByTestId("dk-passport-alpha"); // inside that box
   expect(p).toHaveTextContent("Group G");
-  const src = within(p).getByTestId("passport-sources");
+  const src = within(p).getByTestId("dk-passport-sources");
   expect(src).toHaveTextContent("o/r @ fffffff"); expect(src).toHaveTextContent("apply gate: server/src/jobs.js:88-97");
   expect(src.querySelector("a").getAttribute("href")).toBe(`https://github.com/o/r/blob/${REV}/server/src/jobs.js#L88-L97`);
-  expect(within(p).getByTestId("passport-reach")).toHaveTextContent("Upstream 1 · Downstream 2"); // only beta reaches alpha (gamma has no arrows out); alpha reaches beta and gamma
-  expect(within(p).getByTestId("passport-outgoing")).toHaveTextContent("Outgoing · 1"); expect(within(p).getByTestId("passport-outgoing")).toHaveTextContent("Beta box");
-  expect(within(p).getByTestId("passport-incoming")).toHaveTextContent("Incoming · 1");
+  expect(within(p).getByTestId("dk-passport-reach")).toHaveTextContent("Upstream 1 · Downstream 2"); // only beta reaches alpha (gamma has no arrows out); alpha reaches beta and gamma
+  expect(within(p).getByTestId("dk-passport-outgoing")).toHaveTextContent("Outgoing · 1"); expect(within(p).getByTestId("dk-passport-outgoing")).toHaveTextContent("Beta box");
+  expect(within(p).getByTestId("dk-passport-incoming")).toHaveTextContent("Incoming · 1");
 });
 
 test("clicking the open box again collapses it, clicking another box moves the expansion, and the empty canvas collapses it", async () => {
@@ -61,11 +61,11 @@ test("an item in the lists opens the box at the other end; Close collapses; clic
   fakeApi({ handlers: serve({ one: doc("one", "Model one") }) });
   mount();
   fireEvent.click(await box("alpha"));
-  fireEvent.click(screen.getByTestId("passport-reach")); fireEvent.click(screen.getByTestId("passport-sources").querySelector("a"));
+  fireEvent.click(screen.getByTestId("dk-passport-reach")); fireEvent.click(screen.getByTestId("dk-passport-sources").querySelector("a"));
   expect(open()).toEqual(["box-alpha"]); // not collapsed by a click inside the details
-  fireEvent.click(screen.getByTestId("passport-outgoing").querySelector("button.passport-go")); // by class: jsdom never measures nodes, so React Flow keeps them visibility:hidden
+  fireEvent.click(screen.getByTestId("dk-passport-outgoing").querySelector("button.dk-passport-go")); // by class: jsdom never measures nodes, so React Flow keeps them visibility:hidden
   expect(open()).toEqual(["box-beta"]);
-  fireEvent.click(screen.getByTestId("passport-close")); expect(open()).toEqual([]);
+  fireEvent.click(screen.getByTestId("dk-passport-close")); expect(open()).toEqual([]);
 });
 
 test("choosing another route collapses the box at once, before the new route has even loaded (a box id means nothing in another route)", async () => {
@@ -110,17 +110,17 @@ test("Copy link puts a link that opens this route with this box expanded on the 
   fakeApi({ handlers: serve({ one: doc("one", "Model one") }) });
   mount();
   fireEvent.click(await box("beta"));
-  await act(async () => { fireEvent.click(screen.getByTestId("passport-copy")); });
+  await act(async () => { fireEvent.click(screen.getByTestId("dk-passport-copy")); });
   const url = new URL(writeText.mock.calls[0][0]);
   expect(url.hash).toBe("#/diagram/one/beta"); expect(url.search).toBe("");
-  expect(screen.getByTestId("passport-copy")).toHaveTextContent("Copied");
+  expect(screen.getByTestId("dk-passport-copy")).toHaveTextContent("Copied");
 });
 
 test("the real route A: the This lab box shows its three code pointers as links to the commit the diagram pins", async () => {
   fakeApi({ handlers: serve(DIAGRAM_DOCS) });
   mount();
   fireEvent.click(await box("app"));
-  const links = [...screen.getByTestId("passport-sources").querySelectorAll("a")];
+  const links = [...screen.getByTestId("dk-passport-sources").querySelectorAll("a")];
   expect(links.length).toBe(3);
   for (const a of links) expect(a.getAttribute("href")).toMatch(new RegExp(`^https://github\\.com/curtismu7/privilege-bulk-users-LAB/blob/${DIAGRAM_DOCS["route-a"].repo.rev}/server/src/[A-Za-z]+\\.js#L\\d+-L\\d+$`));
 });
