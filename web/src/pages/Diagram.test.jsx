@@ -79,10 +79,11 @@ test("a diagram that does not load shows an alert and no boxes; a missing list d
   expect(await screen.findByRole("alert")).toHaveTextContent(/diagram list did not load/);
 });
 
-test("edges come from the data: one per edge, labels, dashed only where the data says, the hint or facing slots, and the current step's arrow highlighted", () => {
+test("edges come from the data: one per edge, no label on the edge (the kit draws labels), dashed only where the data says, the hint or facing slots, and the current step's arrow highlighted", () => {
   const d = doc("one", "Model one", 300);
   const e = flowEdges(d, new Set(["e1"]), true);
-  expect(e.map((x) => [x.id, x.source, x.target, x.label, x.sourceHandle, x.targetHandle])).toEqual([["e0", "alpha", "beta", "alpha to beta", "r1", "l1"], ["e1", "beta", "alpha", "beta back", "l2", "r2"]]);
+  expect(e.map((x) => [x.id, x.source, x.target, x.sourceHandle, x.targetHandle])).toEqual([["e0", "alpha", "beta", "r1", "l1"], ["e1", "beta", "alpha", "l2", "r2"]]);
+  expect(e.map((x) => x.type)).toEqual(["arrow", "arrow"]); // the kit's label-free edge
   expect(e.map((x) => x.className)).toEqual(["", "flow__edge--on flow__edge--dashed"]);
   expect(e.map((x) => x.animated)).toEqual([false, true]);
   expect(flowEdges(d, new Set(["e1"]), false).map((x) => x.animated)).toEqual([false, false]); // reduced motion
@@ -195,28 +196,28 @@ test("every arrow's label is drawn from the data, and during Simulate only the w
   fakeApi({ handlers: serve(docs) });
   const user = userEvent.setup();
   mount();
-  expect(await screen.findByTestId("flow-label-0")).toHaveTextContent("alpha to beta");
-  expect(screen.getByTestId("flow-label-1")).toHaveTextContent("beta back");
-  expect(document.querySelector(".react-flow__viewport-portal").contains(screen.getByTestId("flow-label-0"))).toBe(true);
-  expect(document.querySelectorAll(".flow-label--on").length).toBe(0); // nothing marked before Simulate
+  expect(await screen.findByTestId("dk-label-e0")).toHaveTextContent("alpha to beta");
+  expect(screen.getByTestId("dk-label-e1")).toHaveTextContent("beta back");
+  expect(document.querySelector(".react-flow__viewport-portal").contains(screen.getByTestId("dk-label-e0"))).toBe(true);
+  expect(document.querySelectorAll(".dk-label--on").length).toBe(0); // nothing marked before Simulate
   await user.click(screen.getByRole("button", { name: "Simulate" }));
-  const on = document.querySelectorAll(".flow-label--on");
+  const on = document.querySelectorAll(".dk-label--on");
   expect(on.length).toBe(1);
-  expect(on[0]).toBe(screen.getByTestId("flow-label-0")); // step 1 walks arrow 0
-  expect(on[0].style.zIndex).toBe("3"); expect(screen.getByTestId("flow-label-1").style.zIndex).toBe("1");
+  expect(on[0]).toBe(screen.getByTestId("dk-label-e0")); // step 1 walks arrow 0
+  expect(on[0].style.zIndex).toBe("3"); expect(screen.getByTestId("dk-label-e1").style.zIndex).toBe("1");
   await user.click(screen.getByRole("button", { name: "Reset" }));
-  expect(document.querySelectorAll(".flow-label--on").length).toBe(0);
+  expect(document.querySelectorAll(".dk-label--on").length).toBe(0);
 });
 
 test("the real routes draw every label they have, and an arrow without text draws none", async () => {
   fakeApi({ handlers: serve(DIAGRAM_DOCS) });
   mount();
-  await screen.findByTestId("flow-label-0");
-  expect(screen.getAllByTestId(/^flow-label-/).length).toBe(DIAGRAM_DOCS["route-a"].edges.filter((e) => e.label).length);
+  await screen.findByTestId("dk-label-e0");
+  expect(screen.getAllByTestId(/^dk-label-e/).length).toBe(DIAGRAM_DOCS["route-a"].edges.filter((e) => e.label).length);
   cleanup();
   const bare = doc("bare", "Bare", 300); delete bare.edges[1].label;
   fakeApi({ handlers: serve({ bare }) });
   mount();
-  await screen.findByTestId("flow-label-0");
-  expect(screen.queryByTestId("flow-label-1")).toBeNull();
+  await screen.findByTestId("dk-label-e0");
+  expect(screen.queryByTestId("dk-label-e1")).toBeNull();
 });
