@@ -17,7 +17,7 @@ services:
       - path: .env
         required: false
     environment:
-      SHELF_URL: ${SHELF_URL:-http://127.0.0.1:4400}
+      SHELF_URL: ${SHELF_URL:-https://local.ping-devops.com:8443/demo-shelf}
       PORT: "7817"
       PBU_BIND: 0.0.0.0
       PBU_CONTAINER: "1"
