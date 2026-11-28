@@ -295,6 +295,7 @@ test("after a route change focus goes to the new page's heading; the first rende
   fakeApi();
   render(<App />);
   await screen.findByTestId("guide-page");
+  await userEvent.setup().click(screen.getByTestId("mode-modal-ok")); // the open modal autofocuses Got it; close it first
   expect(document.body).toHaveFocus();
   go("#/run");
   await screen.findByTestId("run-page");

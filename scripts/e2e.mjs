@@ -85,7 +85,7 @@ try {
   // The Real-or-mock modal opens the page: MOCK, no old banner; "Got it" closes it, and a reload in the same session does not bring it back.
   await t('mode-modal').waitFor();
   check((await t('mode-modal').getAttribute('data-mode')) === 'mock' && (await t('mode-modal').textContent()).includes('MOCK'), 'the modal says MOCK on load');
-  check((await t('banner').count()) === 0 && (await page.locator('main > .banner').count()) === 0, 'no old simulation banner');
+  check((await page.getByTestId('banner').count()) === 0 && (await page.locator('main > .banner').count()) === 0, 'no old simulation banner');
   await t('mode-modal-ok').click();
   check((await t('mode-modal').count()) === 0, 'Got it closes the modal');
   await page.reload({ waitUntil: 'networkidle' });
