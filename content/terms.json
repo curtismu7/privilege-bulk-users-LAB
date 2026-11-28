@@ -82,6 +82,6 @@
   {
     "id": "simulation-honesty",
     "term": "Simulation honesty",
-    "definition": "A banner on every page, presenter mode included, says whether you are in Mock or Real and what is simulated. Product claims without a source are labelled UNVERIFIED on the Guide page."
+    "definition": "A MOCK or REAL modal opens the page (and again on a switch) and says what is simulated; the Mode chip stays in the header. Product claims without a source are labelled UNVERIFIED on the Guide page."
   }
 ]

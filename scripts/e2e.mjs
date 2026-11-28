@@ -79,10 +79,17 @@ try {
     } catch (e) { check(false, `axe on ${name} could not run: ${e.message.split('\n')[0]}`); }
   };
 
-  // --- the header and the banner, on load
+  // --- the header and the modal, on load
   await page.goto(base, { waitUntil: 'networkidle' });
   check((await t('mode').textContent()).includes('mock'), 'the header says Mode: mock on load');
-  check((await t('banner').textContent()).includes('MOCK mode'), 'the banner says Mock on load');
+  // The Real-or-mock modal opens the page: MOCK, no old banner; "Got it" closes it, and a reload in the same session does not bring it back.
+  await t('mode-modal').waitFor();
+  check((await t('mode-modal').getAttribute('data-mode')) === 'mock' && (await t('mode-modal').textContent()).includes('MOCK'), 'the modal says MOCK on load');
+  check((await t('banner').count()) === 0 && (await page.locator('main > .banner').count()) === 0, 'no old simulation banner');
+  await t('mode-modal-ok').click();
+  check((await t('mode-modal').count()) === 0, 'Got it closes the modal');
+  await page.reload({ waitUntil: 'networkidle' });
+  check((await t('mode-modal').count()) === 0, 'a reload in the same session does not show the modal again');
 
   // --- Guide
   await page.goto(`${base}/#/guide`, { waitUntil: 'networkidle' });
@@ -202,6 +209,7 @@ try {
   await page.locator('[data-testid=box-app] strong').click();
   check(await page.locator('.fbox[data-open]').count() === 0, 'clicking the open box again collapses it');
   const linked = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+  await linked.addInitScript(() => { try { sessionStorage.setItem('pbu-mode-seen-mock', '1'); sessionStorage.setItem('pbu-mode-seen-real', '1'); } catch { /* none */ } }); // a second page has its own session: pre-dismiss the modal
   await linked.goto(`${base}/#/diagram/route-b/app`, { waitUntil: 'networkidle' }); await linked.waitForSelector('.fbox[data-open]');
   check(await linked.locator('[data-testid=box-app][data-open]').count() === 1 && /Route B/.test(await linked.locator('.controls select').first().evaluate((el) => el.options[el.selectedIndex].text)), 'a #/diagram/<route>/<box> link opens that route with that box expanded');
   await linked.close();

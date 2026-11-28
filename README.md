@@ -8,11 +8,11 @@ Catalog: none yet (owner assigns with the board row)
 Fork of: [privilege-api-explorer-LAB](https://github.com/curtismu7/privilege-api-explorer-LAB), with its repo, port, shelf entry and history of its own.
 Changed from the fork: no connections store and no catalog explorer; added the bulk engine (plan, apply, verify), the two routes, the Mock world, and the Guide and Run pages; settings now come from this lab's own `.env`.
 
-> **Nothing in Real was run while this lab was built.** Every test uses the in-process mock. Route A follows a script the owner runs in daily use; route B is UNVERIFIED against a real console. The header has a **Mode** control (Mock or Real) and shows the mode; **Real is refused** until the owner opts in, and the banner on every page, presenter mode included, names the mode.
+> **Nothing in Real was run while this lab was built.** Every test uses the in-process mock. Route A follows a script the owner runs in daily use; route B is UNVERIFIED against a real console. The header has a **Mode** control (Mock or Real) and shows the mode; **Real is refused** until the owner opts in, and a MOCK or REAL modal opens the page and names the mode.
 
 ## What is simulated
 
-**Mock mode (the default, and the only mode that runs with no setup).** An in-process stand-in for PingOne (a source environment and Privilege's own environment) and for the Privilege console, with made-up people on `.example` addresses, held in memory on this machine. It plays six scenarios: realistic, clean, rate-limited, flaky, conflicts and a worker with a missing role. The people and the failures are an illustrative sample, not a recording. Nothing leaves this machine: a netguard refuses every non-loopback socket, DNS lookup, fetch and UDP send, and a test asserts zero attempts. The banner says the same.
+**Mock mode (the default, and the only mode that runs with no setup).** An in-process stand-in for PingOne (a source environment and Privilege's own environment) and for the Privilege console, with made-up people on `.example` addresses, held in memory on this machine. It plays six scenarios: realistic, clean, rate-limited, flaky, conflicts and a worker with a missing role. The people and the failures are an illustrative sample, not a recording. Nothing leaves this machine: a netguard refuses every non-loopback socket, DNS lookup, fetch and UDP send, and a test asserts zero attempts. The MOCK modal says the same.
 
 **Real mode (owner-run).** Reads the people from the PingOne environment you name, and creates people and group memberships in Privilege's environment (route A) or user records in the Privilege console (route B), with the credentials in this lab's own `.env`. It is refused until the owner sets `PRIVILEGE_BULK_MODE=real`, and even then a write needs a fresh plan, the count typed back, and the Writes switch. The netguard lets a job reach only the PingOne hosts of its region and, for route B, the one console origin, and only while the job runs. This lab never deletes anything.
 
@@ -96,7 +96,7 @@ lsof -iTCP:7817 -sTCP:LISTEN -n -P
 
 ## Mock and Real
 
-The header has a **Mode** control (a select with Mock and Real) on every page, the `Mode:` chip next to it, and a banner on every page, presenter mode included, that says which mode you are in and what is simulated. The mode lives on the server: the toggle posts `POST /api/mode` and the page re-reads `GET /api/info`, so switching back and forth needs no restart. The Real option is disabled while the guards fail (no opt-in in the `.env`, or a non-loopback bind outside the compose file), and the Run and Help pages say why in plain text. In Real the Run page drops the scenario and people controls (it plans from your own environments), shows the settings the route is still missing by name, and adds the Writes switch, which is off by default and off again after Reset. The Concurrency box (1 to 16) sets the pace of the plan and of the apply that follows it. A plan can be applied once, in the mode it was made in, for 15 minutes: starting another Plan, switching the mode or Reset retires it.
+The header has a **Mode** control (a select with Mock and Real) on every page, the `Mode:` chip next to it, and a modal that opens the page (and again on a switch to the other mode) saying MOCK or REAL and what is simulated. The mode lives on the server: the toggle posts `POST /api/mode` and the page re-reads `GET /api/info`, so switching back and forth needs no restart. The Real option is disabled while the guards fail (no opt-in in the `.env`, or a non-loopback bind outside the compose file), and the Run and Help pages say why in plain text. In Real the Run page drops the scenario and people controls (it plans from your own environments), shows the settings the route is still missing by name, and adds the Writes switch, which is off by default and off again after Reset. The Concurrency box (1 to 16) sets the pace of the plan and of the apply that follows it. A plan can be applied once, in the mode it was made in, for 15 minutes: starting another Plan, switching the mode or Reset retires it.
 
 ## The pages
 
@@ -106,7 +106,7 @@ The header has a **Mode** control (a select with Mock and Real) on every page, t
 - **Audit**: one summary line per plan, apply, abort or writes switch.
 - **Help**: how to run it, what Mock simulates, how Real is set up (setting names only), presenter mode and what each refusal code means.
 
-Presenter mode (the Present button, or P) enlarges the text and keeps the banner and the mode on screen; Esc leaves it. The presenter script is [docs/talk-track.md](docs/talk-track.md).
+Presenter mode (the Present button, or P) enlarges the text and keeps the `Mode:` chip on screen; Esc leaves it. The presenter script is [docs/talk-track.md](docs/talk-track.md).
 
 ## Health, doctor and reset
 

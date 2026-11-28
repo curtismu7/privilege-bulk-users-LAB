@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import * as api from "./api.js";
-import Banner from "./components/Banner.jsx";
+import WritesNotice from "./components/WritesNotice.jsx";
+import ModeModal from "./mode-modal/ModeModal.jsx";
 import ErrorBoundary from "./components/ErrorBoundary.jsx";
 import Audit from "./pages/Audit.jsx";
 import Diagram from "./pages/Diagram.jsx";
@@ -15,6 +16,10 @@ import VerifyMark from "./components/VerifyMark.jsx";
 
 // The family launcher address, used only when this server has no shelf URL of its own (GET /api/shelf answers null).
 const FAMILY_SHELF = "https://local.ping-devops.com:8443/";
+const MODE_LINES = {
+  mock: "An in-process mock of PingOne and of the Privilege console answers on this machine, with made-up people on .example addresses; Apply changes only that in-memory mock. Nothing leaves this machine.",
+  real: "Owner-run: Plan reads from the PingOne environments and the Privilege console named in this lab's own .env, and Apply creates people and group memberships there. Writes stay off until you turn the Writes switch on.",
+};
 const NAV = [["guide", "Guide"], ["run", "Run"], ["diagram", "Diagram"], ["audit", "Audit"]];
 const PAGES = new Set([...NAV.map(([id]) => id), "help"]);
 const store = {
@@ -129,14 +134,15 @@ function Shell() {
       </header>
       <PresentBar />
       <main id="main" className="page" tabIndex={-1}>
-        <Banner mode={mode} writesEnabled={Boolean(info?.writesEnabled)} />
+        <WritesNotice mode={mode} writesEnabled={Boolean(info?.writesEnabled)} />
         {refusal && <p className="notice" data-state="bad" role="alert" data-testid="refusal">{refusal}</p>}
         <div key={epoch}>
-          <ErrorBoundary resetKey={route.page} testId="page-crash" message="This page could not be drawn, so nothing is shown here. The header, the banner and the other pages still work, and Reset starts everything over.">{page}</ErrorBoundary>
+          <ErrorBoundary resetKey={route.page} testId="page-crash" message="This page could not be drawn, so nothing is shown here. The header and the other pages still work, and Reset starts everything over.">{page}</ErrorBoundary>
         </div>
       <TalkTrackDialog isOpen={talkOpen} onClose={() => setTalkOpen(false)} talk={talkSteps} />
 
       </main>
+      <ModeModal mode={mode} lines={MODE_LINES} storageKey="pbu-mode" />
       <p className="visually-hidden" role="status" aria-live="polite" data-testid="live">{msg}</p>
       <footer className="foot">This app runs on your machine and has no accounts. Settings and secrets live in this lab's own .env and are never sent to the page. Product claims are marked UNVERIFIED where we have not verified them (see the Guide and Help).</footer>
     </>

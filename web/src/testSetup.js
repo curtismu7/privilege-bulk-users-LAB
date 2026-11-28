@@ -21,3 +21,6 @@ if (typeof globalThis.localStorage?.clear !== "function") {
     value: { getItem: (k) => (store.has(k) ? store.get(k) : null), setItem: (k, v) => store.set(k, String(v)), removeItem: (k) => store.delete(k), clear: () => store.clear() },
   });
 }
+
+// The Real-or-mock modal remembers a dismissal in sessionStorage for the rest of the session: start every test with it showing.
+afterEach(() => { try { sessionStorage.clear(); } catch { /* none */ } });

@@ -55,7 +55,7 @@ export default function Help({ info = null }) {
 
       <section className="card" aria-labelledby="help-present">
         <h2 id="help-present">Presenter mode and Reset</h2>
-        <p>Present (or the P key) makes the type larger; Escape leaves it. The banner that says Mock or Real stays on every page, presenter mode included. Reset in the header clears the job, the audit history and the Writes switch, stops any polling, and puts the diagram boxes back.</p>
+        <p>Present (or the P key) makes the type larger; Escape leaves it. A MOCK or REAL modal opens the page and comes back when the mode changes; the Mode chip stays in the header on every page, presenter mode included. Reset in the header clears the job, the audit history and the Writes switch, stops any polling, and puts the diagram boxes back.</p>
       </section>
 
       <section className="card" aria-labelledby="help-errors">

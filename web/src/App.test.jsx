@@ -11,7 +11,7 @@ afterEach(() => { cleanup(); vi.restoreAllMocks(); });
 const go = (h) => act(() => { window.location.hash = h; window.dispatchEvent(new HashChangeEvent("hashchange")); });
 const PAGES = ["#/guide", "#/run", "#/diagram", "#/audit", "#/help"];
 
-test("skip link, title, nav and banner: the Guide is the front page and Mock the default mode", async () => {
+test("skip link, title, nav and modal: the Guide is the front page, Mock the default mode, and the old banner is gone", async () => {
   fakeApi();
   render(<App />);
   expect(screen.getByText("Skip to content")).toHaveAttribute("href", "#main");
@@ -20,10 +20,15 @@ test("skip link, title, nav and banner: the Guide is the front page and Mock the
   for (const [id, label] of [["guide", "Guide"], ["run", "Run"], ["diagram", "Diagram"], ["audit", "Audit"]]) expect(screen.getByTestId(`nav-${id}`)).toHaveTextContent(label);
   expect(screen.getByTestId("nav-guide")).toHaveAttribute("aria-current", "page");
   expect(screen.getByTestId("nav-run")).not.toHaveAttribute("aria-current");
-  const banner = screen.getByTestId("banner");
-  expect(within(banner).getByText(/^MOCK mode, simulated/)).toBeInTheDocument();
-  expect(banner).toHaveTextContent(/Nothing leaves this machine/);
-  expect(banner).toHaveTextContent(/\.example/);
+  const modal = await screen.findByTestId("mode-modal");
+  expect(modal).toHaveAttribute("data-mode", "mock");
+  expect(modal).toHaveTextContent("MOCK");
+  expect(modal).toHaveTextContent(/Nothing leaves this machine/);
+  expect(modal).toHaveTextContent(/\.example/);
+  expect(screen.queryByTestId("banner")).toBeNull();
+  expect(document.querySelector("main > .banner, [data-testid=banner]")).toBeNull();
+  await userEvent.setup().click(screen.getByTestId("mode-modal-ok"));
+  expect(screen.queryByTestId("mode-modal")).toBeNull();
   expect(screen.getByTestId("mode")).toHaveTextContent("Mode: mock");
   expect(screen.getAllByRole("heading", { level: 1 }).length).toBe(1); // one h1 per page; the title in the bar is not a heading
 });
@@ -41,14 +46,15 @@ test("hash routing: an empty, unknown or nested hash lands on the Guide; each na
   expect(screen.getByTestId("live")).toHaveAttribute("aria-live", "polite");
 });
 
-test("the header toggle, theme, text size, presenter, Shelf, Help and Reset are on every page; the banner follows the mode on every page", async () => {
+test("the header toggle, theme, text size, presenter, Shelf, Help and Reset are on every page; the old banner is gone on every page", async () => {
   fakeApi();
   render(<App />);
   for (const h of PAGES) {
     go(h);
     await waitFor(() => expect(screen.getByTestId("nav-guide")).toBeInTheDocument());
     for (const id of ["mode-select", "theme-select", "font-select", "presenter", "shelf-link", "help-link", "reset", "mode"]) expect(screen.getByTestId(id), `${id} on ${h}`).toBeInTheDocument();
-    expect(screen.getByTestId("banner")).toHaveTextContent(/^MOCK mode, simulated/);
+    expect(screen.queryByTestId("banner"), h).toBeNull();
+    expect(screen.queryByTestId("writes-notice"), h).toBeNull(); // Mock: no writes notice
   }
 });
 
@@ -62,23 +68,27 @@ test("Real refused: the option is disabled with the server's reason, the page st
   expect(state.calls.some((c) => c.url === "/api/mode")).toBe(false);
 });
 
-test("Real allowed: the toggle posts {source: real}, re-reads info, the banner and the chip follow, writes are shown off, and switching back works", async () => {
+test("Real allowed: the toggle posts {source: real}, re-reads info, the modal and the chip follow with REAL, writes are shown off, and switching back works", async () => {
   const state = fakeApi({ realAvailable: true });
   const user = userEvent.setup();
   render(<App />);
   await waitFor(() => expect(screen.getByTestId("mode-real")).toBeEnabled());
+  await user.click(await screen.findByTestId("mode-modal-ok")); // the MOCK modal, dismissed
   await user.selectOptions(screen.getByTestId("mode-select"), "real");
   await waitFor(() => expect(screen.getByTestId("mode")).toHaveTextContent("Mode: real"));
   expect(state.calls.find((c) => c.url === "/api/mode").body).toEqual({ source: "real" });
   expect(state.count("GET", "/api/info")).toBe(2);
-  const banner = screen.getByTestId("banner");
-  expect(within(banner).getByText(/^REAL mode, owner-run/)).toBeInTheDocument();
-  expect(screen.getByTestId("banner-writes")).toHaveTextContent(/Writes are off/);
+  const modal = await screen.findByTestId("mode-modal");
+  expect(modal).toHaveAttribute("data-mode", "real");
+  expect(modal).toHaveTextContent("REAL");
+  expect(modal).toHaveTextContent(/Owner-run/);
+  expect(modal).toHaveTextContent(/Writes stay off until you turn the Writes switch on/);
+  expect(screen.getByTestId("writes-notice")).toHaveTextContent(/Writes are off/);
   expect(localStorage.getItem("pbu.mode")).toBeNull(); // nothing about the mode is remembered
   await user.selectOptions(screen.getByTestId("mode-select"), "mock");
   await waitFor(() => expect(screen.getByTestId("mode")).toHaveTextContent("Mode: mock"));
-  expect(screen.getByTestId("banner")).toHaveTextContent(/^MOCK mode, simulated/);
-  expect(screen.queryByTestId("banner-writes")).toBeNull();
+  expect(screen.queryByTestId("mode-modal")).toBeNull(); // MOCK was dismissed earlier in this session, so switching back shows nothing new
+  expect(screen.queryByTestId("writes-notice")).toBeNull();
 });
 
 test("a switch the server refuses (409) is shown as the server's own message and the page stays in Mock", async () => {
@@ -91,29 +101,42 @@ test("a switch the server refuses (409) is shown as the server's own message and
   expect(screen.getByTestId("mode")).toHaveTextContent("Mode: mock");
 });
 
-test("Real with writes enabled: the banner raises an alert", async () => {
+test("Real with writes enabled: the writes notice raises an alert and the modal says REAL", async () => {
   const state = fakeApi({ realAvailable: true, info: infoFor("real", true) });
   state.writes = true;
   render(<App />);
   go("#/audit");
-  const writes = await screen.findByTestId("banner-writes");
+  const writes = await screen.findByTestId("writes-notice");
   expect(writes).toHaveTextContent(/WRITES ARE ENABLED/);
   expect(writes).toHaveAttribute("role", "alert");
-  expect(screen.getByTestId("banner")).toHaveTextContent(/^REAL mode, owner-run/);
+  expect(screen.queryByTestId("banner")).toBeNull();
+  expect(screen.getByTestId("mode")).toHaveTextContent("Mode: real");
+  await waitFor(() => expect(screen.getByTestId("mode-modal")).toHaveAttribute("data-mode", "real"));
+});
+
+test("a server that starts in Real: the modal says MOCK until /api/info answers, then REAL (the earlier MOCK does not block it)", async () => {
+  let release;
+  const held = new Promise((r) => { release = r; });
+  fakeApi({ realAvailable: true, handlers: { "GET /api/info": (_b, _s, json) => held.then(() => json(200, infoFor("real", true))) } });
+  render(<App />);
+  expect(await screen.findByTestId("mode-modal")).toHaveAttribute("data-mode", "mock");
+  release();
+  await waitFor(() => expect(screen.getByTestId("mode-modal")).toHaveAttribute("data-mode", "real"));
+  expect(screen.getByTestId("mode-modal")).toHaveTextContent("REAL");
   expect(screen.getByTestId("mode")).toHaveTextContent("Mode: real");
 });
 
-test("presenter mode keeps the banner and the header; the settings are stored under pbu.* and no old key is written", async () => {
+test("presenter mode keeps the header (the modal is not shown again in the same session); the settings are stored under pbu.* and no old key is written", async () => {
   fakeApi();
   const user = userEvent.setup();
   render(<App />);
-  await screen.findByTestId("banner");
+  await user.click(await screen.findByTestId("mode-modal-ok"));
   await user.click(screen.getByTestId("presenter"));
   expect(document.documentElement.dataset.present).toBe("1");
   expect(screen.getByRole("region", { name: "Presenter controls" })).toBeInTheDocument(); // a landmark, not a bare toolbar
   expect(screen.getAllByRole("button", { name: /exit/i }).length).toBe(1); // one Exit control (the header button), not two
   expect(screen.getByTestId("presenter")).toHaveTextContent("Exit present");
-  expect(screen.getByTestId("banner")).toHaveTextContent(/^MOCK mode, simulated/);
+  expect(screen.queryByTestId("mode-modal")).toBeNull();
   expect(screen.getByTestId("reset")).toBeInTheDocument();
   expect(localStorage.getItem("pbu.present")).toBe("1");
   await user.selectOptions(screen.getByTestId("theme-select"), "dark");
@@ -356,7 +379,7 @@ test("a server error code or count key of __proto__ (and constructor) does not b
   expect(screen.queryByTestId("page-crash")).toBeNull();
 });
 
-test("a page that cannot be drawn shows a named message and leaves the header, banner and other pages working", async () => {
+test("a page that cannot be drawn shows a named message and leaves the header, the modal and other pages working", async () => {
   vi.spyOn(console, "error").mockImplementation(() => {});
   fakeApi({ job: job({ warnings: { length: 1 } }) }); // warnings.map is not a function: the page throws while rendering
   const user = userEvent.setup();
@@ -365,7 +388,7 @@ test("a page that cannot be drawn shows a named message and leaves the header, b
   const crash = await screen.findByTestId("page-crash");
   expect(crash).toHaveAttribute("role", "alert");
   expect(crash).toHaveTextContent("This page could not be drawn");
-  expect(screen.getByTestId("banner")).toHaveTextContent(/^MOCK mode, simulated/);
+  expect(screen.getByTestId("mode-modal")).toHaveAttribute("data-mode", "mock");
   expect(screen.getByTestId("mode-select")).toBeInTheDocument();
   go("#/guide"); // leaving the broken page clears the message
   expect(await screen.findByTestId("guide-page")).toBeInTheDocument();

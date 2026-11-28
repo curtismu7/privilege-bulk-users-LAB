@@ -47,7 +47,7 @@ A write needs two deliberate steps, and a third in Real.
 
 The **Concurrency** box (1 to 16) is one throttle for the whole run: the apply uses the value its plan was made with, so a low pace chosen for a plan is also the pace of the writes (`server/test/gate.test.js :: the Concurrency box governs the apply as well as the plan; the job says how many people and which scenario`). **Reset** aborts a running job and waits for it to drain before it clears anything, so a job cannot write a late audit entry or revive a plan after Reset (`server/test/abuse-gate.test.js :: G4 Reset during a running apply leaves no late audit entry`, `server/test/abuse-gate.test.js :: G5 Reset during a running plan does not resurrect the plan`). The JSON and CSV reports name the mode in the file name and in every CSV row, so a Mock result cannot be mistaken for a Real one once it has left the page.
 
-Every refusal is JSON with a named code and writes nothing (`server/test/gate.test.js :: apply is refused, with a named reason and nothing written, until every condition holds`, `server/test/gate.test.js :: a plan from before a mode change or a Reset cannot be applied`, `web/src/pages/Run.test.jsx :: Apply is gated: the button stays disabled until REGISTER N is typed exactly, and the panel says how many people change`, `web/src/pages/Run.test.jsx :: Real: Apply also needs the Writes switch; the switch posts /api/writes, shows its state, and the banner follows`).
+Every refusal is JSON with a named code and writes nothing (`server/test/gate.test.js :: apply is refused, with a named reason and nothing written, until every condition holds`, `server/test/gate.test.js :: a plan from before a mode change or a Reset cannot be applied`, `web/src/pages/Run.test.jsx :: Apply is gated: the button stays disabled until REGISTER N is typed exactly, and the panel says how many people change`, `web/src/pages/Run.test.jsx :: Real: Apply also needs the Writes switch; the switch posts /api/writes, shows its state, and the writes notice follows`).
 
 Around the gate, the engine keeps a bulk write safe:
 
@@ -76,7 +76,7 @@ A repo scan refuses any UUID except the placeholders, any private host and any k
 
 ## What the page stores
 
-The page keeps three per-viewer conveniences in the browser's `localStorage`, and nothing else: `pbu.font` (text size), `pbu.theme` (Auto, Light or Dark) and `pbu.present` (presenter mode). No credential, no setting, no mode and no result is stored there: the mode is the server's, read from `GET /api/info` (`web/src/App.test.jsx :: presenter mode keeps the banner and the header; the settings are stored under pbu.* and no old key is written`).
+The page keeps three per-viewer conveniences in the browser's `localStorage`, and nothing else: `pbu.font` (text size), `pbu.theme` (Auto, Light or Dark) and `pbu.present` (presenter mode). No credential, no setting, no mode and no result is stored there: the mode is the server's, read from `GET /api/info` (`web/src/App.test.jsx :: presenter mode keeps the header (the modal is not shown again in the same session); the settings are stored under pbu.* and no old key is written`).
 
 ## What is NOT protected
 
