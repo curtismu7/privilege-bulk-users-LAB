@@ -2,9 +2,8 @@
    no colour literals, no dark-mode media queries, no forced priority, no italics, breakpoints 600px and 900px only.
    Status is always a word beside the colour (a chip carries its text). */
 html { font-size: var(--fs, 16px); }
-/* Presenter mode: everything in rem grows with the root (the page, h1, the simulation banner, hints, chips, tables), and the banner a little more. */
+/* Presenter mode: everything in rem grows with the root (the page, h1, hints, chips, tables). */
 :root[data-present="1"] { font-size: calc(var(--fs, 16px) * 1.2); }
-:root[data-present="1"] .banner { font-size: 1.05rem; }
 a { color: var(--focus); }
 
 .skip { position: absolute; left: -999px; top: 0; padding: 8px 16px; background: var(--surface); color: var(--text); border: 2px solid var(--accent); z-index: 50; }
@@ -30,7 +29,7 @@ a { color: var(--focus); }
   .top-menu__row { justify-content: flex-start; }
 }
 
-/* Page frame (P3): one centred column; the banner is the first thing in it. */
+/* Page frame (P3): one centred column. */
 .page { max-width: 2200px; margin: 0 auto; padding: 0.5rem 0 3rem; }
 .foot { max-width: 1100px; margin: 0 auto; padding: 1rem 0 2rem; color: var(--muted); font-size: 0.8125rem; }
 

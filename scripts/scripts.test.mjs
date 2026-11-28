@@ -87,7 +87,7 @@ test('doctor.mjs never prints a setting value: a secret in the .env stays out of
 test('e2e.mjs drives only test ids the web app has, and the contract ones are all there', () => {
   const e2e = fs.readFileSync(path.join(root, 'scripts/e2e.mjs'), 'utf8');
   const used = new Set([...e2e.matchAll(/\bt\('([a-z0-9_-]+)'\)/g), ...e2e.matchAll(/data-testid="([a-z0-9_-]+)"/g)].map((m) => m[1]));
-  for (const id of ['nav-run', 'guide-page', 'unverified-list', 'run-page', 'route-a', 'scenario-select', 'users-select', 'plan-btn', 'verify-btn', 'job-state', 'job-phase', 'progress', 'counts', 'warnings', 'ack-destination_empty', 'apply-panel', 'confirm-input', 'apply-btn', 'results-table', 'report-json', 'report-csv', 'mode', 'banner', 'reset', 'live']) assert.ok(used.has(id), `e2e.mjs uses ${id}`);
+  for (const id of ['nav-run', 'guide-page', 'unverified-list', 'run-page', 'route-a', 'scenario-select', 'users-select', 'plan-btn', 'verify-btn', 'job-state', 'job-phase', 'progress', 'counts', 'warnings', 'ack-destination_empty', 'apply-panel', 'confirm-input', 'apply-btn', 'results-table', 'report-json', 'report-csv', 'mode', 'mode-modal', 'mode-modal-ok', 'reset', 'live']) assert.ok(used.has(id), `e2e.mjs uses ${id}`);
   const web = [];
   const walk = (d) => { for (const n of fs.readdirSync(d)) { const p = path.join(d, n); if (fs.statSync(p).isDirectory()) walk(p); else if (/\.jsx?$/.test(n) && !/\.test\.jsx?$/.test(n)) web.push(fs.readFileSync(p, 'utf8')); } };
   walk(path.join(root, 'web', 'src'));

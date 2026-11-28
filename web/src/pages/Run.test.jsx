@@ -394,7 +394,7 @@ test("Real: no scenario or people controls, the missing setting NAMES are shown 
   expect(state.calls.find((c) => c.url === "/api/plan").body).toEqual({ route: "b", concurrency: 6 });
 });
 
-test("Real: Apply also needs the Writes switch; the switch posts /api/writes, shows its state, and the banner follows", async () => {
+test("Real: Apply also needs the Writes switch; the switch posts /api/writes, shows its state, and the writes notice follows", async () => {
   const state = await mount({ realAvailable: true, info: infoFor("real", true), handlers: flow({ plan: job({ source: "real", scenario: null }), apply: applyJob({ source: "real", scenario: null }) }) });
   await ready();
   const user = userEvent.setup();
@@ -411,12 +411,12 @@ test("Real: Apply also needs the Writes switch; the switch posts /api/writes, sh
   await waitFor(() => expect(sw).toBeChecked());
   expect(state.calls.find((c) => c.url === "/api/writes").body).toEqual({ enabled: true });
   expect(screen.getByTestId("apply-panel")).toHaveTextContent("Writes: ON");
-  expect(screen.getByTestId("banner-writes")).toHaveTextContent(/WRITES ARE ENABLED/);
+  expect(screen.getByTestId("writes-notice")).toHaveTextContent(/WRITES ARE ENABLED/);
   expect(screen.getByTestId("apply-btn")).toBeEnabled();
   await user.click(sw); // and off again
   await waitFor(() => expect(sw).not.toBeChecked());
   expect(screen.getByTestId("apply-btn")).toBeDisabled();
-  expect(screen.getByTestId("banner-writes")).toHaveTextContent(/Writes are off/);
+  expect(screen.getByTestId("writes-notice")).toHaveTextContent(/Writes are off/);
 });
 
 test("Real: the server's refusal of an apply is shown word for word", async () => {
